@@ -8,7 +8,6 @@ class WeatherEngine {
     this.observers = [];
   }
 
-  // 옵저버 등록 (설계문서 옵저버 패턴)
   subscribe(observer) {
     this.observers.push(observer);
   }
@@ -17,7 +16,6 @@ class WeatherEngine {
     this.observers.forEach(obs => obs.update(data));
   }
 
-  // FR-003: 시뮬레이션 데이터
   generateSimulationData(region) {
     return {
       region,
@@ -31,8 +29,15 @@ class WeatherEngine {
     };
   }
 
-  // FR-002: 에어코리아 실제 API 연동
   async fetchAirKoreaData(region) {
+    const sidoMap = {
+      '서울': '서울',
+      '부산': '부산',
+      '인천': '인천',
+      '대구': '대구',
+      '창원': '경남',
+    };
+
     const apiKey = process.env.AIRKOREA_API_KEY;
     if (!apiKey) return this.generateSimulationData(region);
 
@@ -43,7 +48,7 @@ class WeatherEngine {
           returnType: 'json',
           numOfRows: 100,
           pageNo: 1,
-          sidoName: region,
+          sidoName: sidoMap[region] || region,
           ver: '1.0'
         },
         timeout: 10000
@@ -59,7 +64,6 @@ class WeatherEngine {
       const pm25 = parseFloat(item.pm25Value) || null;
       const pm10 = parseFloat(item.pm10Value) || null;
 
-      // 기상청 날씨 데이터도 함께 가져오기
       const weatherData = await this.fetchWeatherData(region);
 
       return {
@@ -78,12 +82,10 @@ class WeatherEngine {
     }
   }
 
-  // 기상청 단기예보 API
   async fetchWeatherData(region) {
     const apiKey = process.env.WEATHER_API_KEY;
     if (!apiKey) return null;
 
-    // 지역별 기상청 격자 좌표
     const regionGrid = {
       '서울': { nx: 60, ny: 127 },
       '부산': { nx: 98, ny: 76 },
@@ -99,7 +101,7 @@ class WeatherEngine {
       const now = new Date();
       const baseDate = now.toISOString().slice(0, 10).replace(/-/g, '');
       const hours = now.getHours();
-      const baseTime = hours < 2 ? '2300' : `${String(hours - 1).padStart(2, '0')}00`;
+      const baseTime = hours < 1 ? '2300' : `${String(hours - 1).padStart(2, '0')}00`;
 
       const response = await axios.get('https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst', {
         params: {
@@ -131,7 +133,6 @@ class WeatherEngine {
     }
   }
 
-  // DB 저장 및 옵저버 알림
   async saveEnvironmentLog(data) {
     const queryText = `
       INSERT INTO environment_logs (region, pm25, pm10, co2, temperature, humidity, measured_at, source)
@@ -141,7 +142,6 @@ class WeatherEngine {
     const res = await db.query(queryText, values);
     console.log(`[WeatherEngine] ${data.region} 저장 완료 (Log ID: ${res.rows[0].id}, source: ${data.source})`);
 
-    // 옵저버 패턴: AlertManager에 알림
     this.notifyObservers(data);
 
     return res.rows[0].id;
