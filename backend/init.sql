@@ -30,3 +30,20 @@ CREATE TABLE IF NOT EXISTS alert_settings (
   condition  VARCHAR(5)  NOT NULL DEFAULT 'gt',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS alert_records (
+  id              SERIAL PRIMARY KEY,
+  user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  metric          VARCHAR(20) NOT NULL,
+  threshold_value NUMERIC(8,2) NOT NULL,
+  actual_value    NUMERIC(8,2) NOT NULL,
+  message         TEXT NOT NULL,
+  channel         VARCHAR(20) NOT NULL DEFAULT 'dashboard',
+  region          VARCHAR(50) NOT NULL,
+  is_read         BOOLEAN NOT NULL DEFAULT FALSE,
+  read_at         TIMESTAMP,
+  created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_alert_records_dedupe
+  ON alert_records (user_id, region, metric, created_at DESC);
