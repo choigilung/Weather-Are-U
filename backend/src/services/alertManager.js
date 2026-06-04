@@ -1,4 +1,5 @@
 const weatherRepository = require('../repositories/weatherRepository');
+const notificationFactory = require('./notifications/notificationFactory');
 
 const METRIC_LABELS = {
   pm25: { label: 'PM2.5', unit: 'ug/m3' },
@@ -45,15 +46,21 @@ class AlertManager {
 
   async triggerAlert({ userId, region, metric, actualValue, thresholdValue, condition }) {
     const message = this.formatMessage({ region, metric, actualValue, thresholdValue, condition });
-    return weatherRepository.createAlertRecord({
+    const channel = 'push';
+    const record = await weatherRepository.createAlertRecord({
       userId,
       metric,
       thresholdValue,
       actualValue,
       message,
-      channel: 'dashboard',
+      channel,
       region,
     });
+
+    const notification = notificationFactory.create(channel);
+    await notification.send({ userId, message, record });
+
+    return record;
   }
 
   isTriggered(actualValue, thresholdValue, condition = 'gt') {

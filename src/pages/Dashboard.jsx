@@ -67,6 +67,11 @@ export default function Dashboard() {
     }
   }, []);
 
+  const refreshDashboard = useCallback(() => {
+    loadLive();
+    loadHistory(selectedRegion);
+  }, [loadLive, loadHistory, selectedRegion]);
+
   const loadTrend = useCallback(async ({ region, metric, period }) => {
     setTrendLoading(true);
     setTrendMessage('');
@@ -105,6 +110,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadHistory(selectedRegion);
+    const timer = setInterval(() => loadHistory(selectedRegion), 5 * 60 * 1000);
+    return () => clearInterval(timer);
   }, [selectedRegion, loadHistory]);
 
   useEffect(() => {
@@ -234,7 +241,7 @@ export default function Dashboard() {
                   {lastUpdated ? lastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'}
                 </p>
                 <button
-                  onClick={loadLive}
+                  onClick={refreshDashboard}
                   type="button"
                   style={{
                     marginTop: 6,

@@ -23,6 +23,26 @@ app.get('/api/environment/live', async (req, res) => {
   }
 });
 
+app.get('/api/dashboard', async (req, res) => {
+  try {
+    const latestData = await weatherRepository.getLatestLiveEntries();
+    const region = req.query.region;
+    const selected = region
+      ? latestData.find((item) => item.region === region)
+      : latestData[0];
+
+    res.status(200).json({
+      success: true,
+      region: region || selected?.region || null,
+      data: selected || null,
+      allRegions: latestData,
+    });
+  } catch (error) {
+    console.error('대시보드 데이터 조회 오류:', error);
+    res.status(500).json({ error: '서버 내부 오류가 발생했습니다.' });
+  }
+});
+
 app.get('/api/environment/history/:region', async (req, res) => {
   try {
     const { region } = req.params;
@@ -36,7 +56,7 @@ app.get('/api/environment/history/:region', async (req, res) => {
   }
 });
 
-app.post('/api/alerts', async (req, res) => {
+async function createAlertSetting(req, res) {
   try {
     const { region, metric, threshold, condition } = req.body;
     const userId = await userRepository.findOrCreateGuestUserId();
@@ -52,9 +72,9 @@ app.post('/api/alerts', async (req, res) => {
     console.error('알림 설정 오류:', error);
     res.status(500).json({ error: '서버 내부 오류가 발생했습니다.' });
   }
-});
+}
 
-app.get('/api/alerts', async (req, res) => {
+async function getAlertSettings(req, res) {
   try {
     const userId = await userRepository.findOrCreateGuestUserId();
     const alerts = await weatherRepository.getAlertsByUser(userId);
@@ -63,7 +83,12 @@ app.get('/api/alerts', async (req, res) => {
     console.error('알림 조회 오류:', error);
     res.status(500).json({ error: '서버 내부 오류가 발생했습니다.' });
   }
-});
+}
+
+app.post('/api/alerts', createAlertSetting);
+app.post('/api/alerts/settings', createAlertSetting);
+app.get('/api/alerts', getAlertSettings);
+app.get('/api/alerts/settings', getAlertSettings);
 
 app.get('/api/alerts/history', async (req, res) => {
   try {
