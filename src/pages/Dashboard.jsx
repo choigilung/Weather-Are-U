@@ -490,7 +490,7 @@ export default function Dashboard() {
                             width: 6,
                             height: 6,
                             borderRadius: '50%',
-                            background: record.is_read ? '#e8eaed' : '#0ea5e9',
+                            background: record.is_read ? '#e8eaed' : '#e50ee9',
                             flexShrink: 0,
                           }} />
                           <div style={{ minWidth: 0 }}>
