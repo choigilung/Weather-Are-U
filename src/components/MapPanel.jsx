@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getPm25Grade, fmt } from '../utils/grade';
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+const GOOGLE_MAPS_AUTH_ERROR =
+  'Google Maps API 인증에 실패했습니다. Maps JavaScript API 활성화, 결제 설정, HTTP referrer 제한을 확인해 주세요.';
 const REGION_COORDS = {
   서울: { lat: 37.5665, lng: 126.9780 },
   부산: { lat: 35.1796, lng: 129.0756 },
@@ -21,10 +23,13 @@ function loadGoogleMaps() {
 
   mapsScriptPromise = new Promise((resolve, reject) => {
     window.gm_authFailure = () => {
-      reject(new Error('Google Maps API 인증에 실패했습니다. Maps JavaScript API 활성화, 결제 설정, HTTP referrer 제한을 확인해 주세요.'));
+      const error = new Error(GOOGLE_MAPS_AUTH_ERROR);
+      window.dispatchEvent(new CustomEvent('google-maps-auth-failure', { detail: error.message }));
+      mapsScriptPromise = null;
+      reject(error);
     };
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&v=weekly&language=ko&region=KR`;
     script.async = true;
     script.defer = true;
     script.onload = () => resolve(window.google.maps);
@@ -50,6 +55,13 @@ export default function MapPanel({ liveData, selectedRegion }) {
 
   useEffect(() => {
     let cancelled = false;
+    const handleAuthFailure = (event) => {
+      if (cancelled) return;
+      setStatus('error');
+      setMessage(event.detail || GOOGLE_MAPS_AUTH_ERROR);
+    };
+
+    window.addEventListener('google-maps-auth-failure', handleAuthFailure);
 
     async function initMap() {
       setStatus('loading');
@@ -83,6 +95,7 @@ export default function MapPanel({ liveData, selectedRegion }) {
 
     return () => {
       cancelled = true;
+      window.removeEventListener('google-maps-auth-failure', handleAuthFailure);
     };
   }, [fallbackCenter]);
 
