@@ -11,6 +11,18 @@ const METRICS = [
 
 const REGIONS = ['서울', '부산', '인천', '대구', '창원'];
 
+const inputStyle = {
+  background: '#f8f9fa',
+  border: '1px solid #e8eaed',
+  borderRadius: 8,
+  color: '#202124',
+  padding: '9px 12px',
+  fontSize: 13,
+  width: '100%',
+  boxSizing: 'border-box',
+  outline: 'none',
+};
+
 export default function AlertPanel() {
   const [alerts, setAlerts] = useState([]);
   const [records, setRecords] = useState([]);
@@ -50,10 +62,8 @@ export default function AlertPanel() {
   const handleSave = async (event) => {
     event.preventDefault();
     if (!form.threshold) return;
-
     setSaving(true);
     setMessage('');
-
     try {
       await api.post('/api/alerts', { ...form, threshold: parseFloat(form.threshold) });
       setMessage('알림 설정을 저장했습니다.');
@@ -76,54 +86,39 @@ export default function AlertPanel() {
     }
   };
 
-  const inputStyle = {
-    background: '#0f172a',
-    border: '1px solid #334155',
-    borderRadius: 8,
-    color: '#f1f5f9',
-    padding: '8px 12px',
-    fontSize: 13,
-    width: '100%',
-    boxSizing: 'border-box',
-  };
-
   return (
-    <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: 24 }}>
-      <h3 style={{ color: '#f1f5f9', fontSize: 15, fontWeight: 700, margin: '0 0 20px' }}>
-        알림 설정
-      </h3>
-
+    <div>
       <form onSubmit={handleSave} style={{ display: 'grid', gap: 10, marginBottom: 20 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
-            <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 4 }}>지역</label>
-            <select value={form.region} onChange={(event) => setForm((prev) => ({ ...prev, region: event.target.value }))} style={inputStyle}>
-              {REGIONS.map((region) => <option key={region}>{region}</option>)}
+            <label style={{ color: '#70757a', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 5 }}>지역</label>
+            <select value={form.region} onChange={(e) => setForm((p) => ({ ...p, region: e.target.value }))} style={inputStyle}>
+              {REGIONS.map((r) => <option key={r}>{r}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 4 }}>항목</label>
-            <select value={form.metric} onChange={(event) => setForm((prev) => ({ ...prev, metric: event.target.value }))} style={inputStyle}>
-              {METRICS.map((metric) => <option key={metric.value} value={metric.value}>{metric.label}</option>)}
+            <label style={{ color: '#70757a', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 5 }}>항목</label>
+            <select value={form.metric} onChange={(e) => setForm((p) => ({ ...p, metric: e.target.value }))} style={inputStyle}>
+              {METRICS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
           </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
-            <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 4 }}>조건</label>
-            <select value={form.condition} onChange={(event) => setForm((prev) => ({ ...prev, condition: event.target.value }))} style={inputStyle}>
+            <label style={{ color: '#70757a', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 5 }}>조건</label>
+            <select value={form.condition} onChange={(e) => setForm((p) => ({ ...p, condition: e.target.value }))} style={inputStyle}>
               <option value="gt">초과하면</option>
               <option value="lt">미만이면</option>
             </select>
           </div>
           <div>
-            <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 4 }}>임계값</label>
+            <label style={{ color: '#70757a', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 5 }}>임계값</label>
             <input
               type="number"
               placeholder="숫자 입력"
               value={form.threshold}
-              onChange={(event) => setForm((prev) => ({ ...prev, threshold: event.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, threshold: e.target.value }))}
               style={inputStyle}
             />
           </div>
@@ -135,23 +130,27 @@ export default function AlertPanel() {
           style={{
             padding: '10px',
             borderRadius: 8,
-            border: '1px solid rgba(34,197,94,0.3)',
+            border: 'none',
             fontSize: 13,
-            fontWeight: 600,
-            background: saving ? '#334155' : 'rgba(34,197,94,0.2)',
-            color: saving ? '#64748b' : '#22c55e',
+            fontWeight: 700,
+            background: saving ? '#e8eaed' : '#0ea5e9',
+            color: saving ? '#9aa0a6' : '#ffffff',
             cursor: saving ? 'not-allowed' : 'pointer',
+            transition: 'background 120ms',
           }}
         >
           {saving ? '저장 중...' : '알림 추가'}
         </button>
 
-        {message && <p style={{ color: '#94a3b8', fontSize: 12, margin: 0 }}>{message}</p>}
+        {message && (
+          <p style={{ color: '#0ea5e9', fontSize: 12, margin: 0, textAlign: 'center' }}>{message}</p>
+        )}
       </form>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* 현재 알림 목록 */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 24 }}>
         {alerts.length === 0 ? (
-          <p style={{ color: '#475569', fontSize: 13, textAlign: 'center', padding: '12px 0' }}>
+          <p style={{ color: '#9aa0a6', fontSize: 13, textAlign: 'center', padding: '14px 0', margin: 0 }}>
             설정된 알림이 없습니다.
           </p>
         ) : alerts.map((alert) => (
@@ -161,87 +160,87 @@ export default function AlertPanel() {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              background: '#0f172a',
+              background: '#f8f9fa',
+              border: '1px solid #e8eaed',
               borderRadius: 8,
               padding: '10px 14px',
               gap: 12,
             }}
           >
-            <div>
-              <span style={{ color: '#94a3b8', fontSize: 13 }}>
-                {alert.region} / {METRICS.find((metric) => metric.value === alert.metric)?.label || alert.metric}
-              </span>
-              <span style={{ color: '#22c55e', fontSize: 13, marginLeft: 8, fontFamily: 'monospace' }}>
+            <span style={{ color: '#202124', fontSize: 13 }}>
+              {alert.region} / {METRICS.find((m) => m.value === alert.metric)?.label || alert.metric}
+              <span style={{ color: '#0ea5e9', fontWeight: 700, marginLeft: 8, fontFamily: 'monospace' }}>
                 {alert.condition === 'gt' ? '>' : '<'} {alert.threshold}
               </span>
-            </div>
+            </span>
             <button
               onClick={() => handleDelete(alert.id)}
               type="button"
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#64748b',
+                color: '#9aa0a6',
                 cursor: 'pointer',
-                fontSize: 18,
+                fontSize: 16,
                 lineHeight: 1,
                 padding: '0 4px',
+                flexShrink: 0,
               }}
               aria-label="알림 삭제"
             >
-              x
+              ×
             </button>
           </div>
         ))}
       </div>
 
-      <div style={{ borderTop: '1px solid #334155', marginTop: 24, paddingTop: 20 }}>
+      {/* 알림 이력 */}
+      <div style={{ borderTop: '1px solid #f1f3f4', paddingTop: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-          <h3 style={{ color: '#f1f5f9', fontSize: 15, fontWeight: 700, margin: 0 }}>
-            알림 이력
-          </h3>
+          <h4 style={{ color: '#202124', fontSize: 14, fontWeight: 700, margin: 0 }}>알림 이력</h4>
           <button
             type="button"
             onClick={loadHistory}
             style={{
-              border: '1px solid #334155',
-              background: '#0f172a',
-              color: '#94a3b8',
+              border: '1px solid #e8eaed',
+              background: '#f8f9fa',
+              color: '#70757a',
               borderRadius: 8,
               padding: '5px 10px',
               cursor: 'pointer',
               fontSize: 12,
+              fontWeight: 600,
             }}
           >
             새로고침
           </button>
         </div>
 
-        {historyError && <p style={{ color: '#fca5a5', fontSize: 12, margin: '0 0 10px' }}>{historyError}</p>}
+        {historyError && <p style={{ color: '#dc2626', fontSize: 12, margin: '0 0 10px' }}>{historyError}</p>}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto' }}>
           {historyLoading ? (
-            <p style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', padding: '12px 0' }}>
+            <p style={{ color: '#9aa0a6', fontSize: 13, textAlign: 'center', padding: '16px 0', margin: 0 }}>
               알림 이력을 불러오는 중입니다...
             </p>
           ) : records.length === 0 ? (
-            <p style={{ color: '#475569', fontSize: 13, textAlign: 'center', padding: '12px 0' }}>
+            <p style={{ color: '#9aa0a6', fontSize: 13, textAlign: 'center', padding: '16px 0', margin: 0 }}>
               아직 발송된 알림이 없습니다.
             </p>
           ) : records.map((record) => (
-            <div key={record.id} style={{ background: '#0f172a', borderRadius: 8, padding: '12px 14px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
-                <span style={{ color: '#f1f5f9', fontSize: 13, fontWeight: 700 }}>
-                  {record.region} / {METRICS.find((metric) => metric.value === record.metric)?.label || record.metric}
+            <div key={record.id} style={{ background: '#f8f9fa', border: '1px solid #e8eaed', borderRadius: 8, padding: '12px 14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 4 }}>
+                <span style={{ color: '#202124', fontSize: 13, fontWeight: 700 }}>
+                  {record.region} / {METRICS.find((m) => m.value === record.metric)?.label || record.metric}
                 </span>
-                <span style={{ color: record.is_read ? '#64748b' : '#22c55e', fontSize: 11, whiteSpace: 'nowrap' }}>
+                <span style={{ color: record.is_read ? '#9aa0a6' : '#0ea5e9', fontSize: 11, whiteSpace: 'nowrap', fontWeight: 600 }}>
                   {record.is_read ? '읽음' : '안 읽음'}
                 </span>
               </div>
-              <p style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.45, margin: '0 0 8px' }}>
+              <p style={{ color: '#5f6368', fontSize: 13, lineHeight: 1.45, margin: '0 0 6px' }}>
                 {record.message}
               </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 12px', color: '#64748b', fontSize: 12 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', color: '#9aa0a6', fontSize: 11 }}>
                 <span>실제값: {record.actual_value}</span>
                 <span>임계값: {record.threshold_value}</span>
                 <span>{new Date(record.created_at).toLocaleString('ko-KR')}</span>

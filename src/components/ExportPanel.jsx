@@ -10,6 +10,19 @@ const METRICS = [
   { key: 'co2', label: 'CO2' },
 ];
 
+const inputStyle = {
+  background: '#f8f9fa',
+  border: '1px solid #e8eaed',
+  borderRadius: 8,
+  color: '#202124',
+  padding: '9px 12px',
+  fontSize: 13,
+  width: '100%',
+  boxSizing: 'border-box',
+  outline: 'none',
+  marginTop: 5,
+};
+
 export default function ExportPanel({ selectedRegion }) {
   const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
@@ -33,7 +46,6 @@ export default function ExportPanel({ selectedRegion }) {
   const downloadCsv = async () => {
     setLoading(true);
     setMessage('');
-
     try {
       const params = new URLSearchParams({
         format: 'csv',
@@ -47,7 +59,6 @@ export default function ExportPanel({ selectedRegion }) {
         const error = await response.json().catch(() => ({}));
         throw new Error(error.error || 'CSV 다운로드에 실패했습니다.');
       }
-
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -65,73 +76,91 @@ export default function ExportPanel({ selectedRegion }) {
     }
   };
 
-  const inputStyle = {
-    background: '#0f172a',
-    border: '1px solid #334155',
-    borderRadius: 8,
-    color: '#f1f5f9',
-    padding: '8px 12px',
-    fontSize: 13,
-    width: '100%',
-  };
-
   return (
-    <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: 24 }}>
-      <h2 style={{ color: '#f1f5f9', fontSize: 16, margin: '0 0 16px' }}>CSV 내보내기</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
-        <label style={{ color: '#94a3b8', fontSize: 12 }}>
-          시작일
-          <input type="date" value={form.startDate} onChange={(event) => setForm((prev) => ({ ...prev, startDate: event.target.value }))} style={inputStyle} />
-        </label>
-        <label style={{ color: '#94a3b8', fontSize: 12 }}>
-          종료일
-          <input type="date" value={form.endDate} onChange={(event) => setForm((prev) => ({ ...prev, endDate: event.target.value }))} style={inputStyle} />
-        </label>
-        <label style={{ color: '#94a3b8', fontSize: 12 }}>
-          지역
-          <select value={form.region} onChange={(event) => setForm((prev) => ({ ...prev, region: event.target.value }))} style={inputStyle}>
-            {REGIONS.map((region) => <option key={region}>{region}</option>)}
-          </select>
-        </label>
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-        {METRICS.map((metric) => (
-          <button
-            key={metric.key}
-            type="button"
-            onClick={() => toggleMetric(metric.key)}
-            style={{
-              border: `1px solid ${form.metrics.includes(metric.key) ? '#22c55e' : '#334155'}`,
-              background: form.metrics.includes(metric.key) ? 'rgba(34,197,94,0.14)' : '#0f172a',
-              color: form.metrics.includes(metric.key) ? '#22c55e' : '#94a3b8',
-              borderRadius: 8,
-              padding: '6px 12px',
-              cursor: 'pointer',
-              fontSize: 12,
-              fontWeight: 700,
-            }}
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
+        <div>
+          <label style={{ color: '#70757a', fontSize: 11, fontWeight: 600 }}>시작일</label>
+          <input
+            type="date"
+            value={form.startDate}
+            onChange={(e) => setForm((prev) => ({ ...prev, startDate: e.target.value }))}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label style={{ color: '#70757a', fontSize: 11, fontWeight: 600 }}>종료일</label>
+          <input
+            type="date"
+            value={form.endDate}
+            onChange={(e) => setForm((prev) => ({ ...prev, endDate: e.target.value }))}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label style={{ color: '#70757a', fontSize: 11, fontWeight: 600 }}>지역</label>
+          <select
+            value={form.region}
+            onChange={(e) => setForm((prev) => ({ ...prev, region: e.target.value }))}
+            style={inputStyle}
           >
-            {metric.label}
-          </button>
-        ))}
+            {REGIONS.map((r) => <option key={r}>{r}</option>)}
+          </select>
+        </div>
       </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <p style={{ color: '#70757a', fontSize: 11, fontWeight: 600, margin: '0 0 8px' }}>항목 선택</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {METRICS.map((metric) => {
+            const active = form.metrics.includes(metric.key);
+            return (
+              <button
+                key={metric.key}
+                type="button"
+                onClick={() => toggleMetric(metric.key)}
+                style={{
+                  border: `1px solid ${active ? '#0ea5e9' : '#e8eaed'}`,
+                  background: active ? '#e0f2fe' : '#f8f9fa',
+                  color: active ? '#0369a1' : '#70757a',
+                  borderRadius: 20,
+                  padding: '5px 14px',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontWeight: active ? 700 : 500,
+                  transition: 'all 120ms',
+                }}
+              >
+                {metric.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <button
         type="button"
         onClick={downloadCsv}
         disabled={loading || form.metrics.length === 0}
         style={{
-          border: '1px solid rgba(34,197,94,0.35)',
-          background: loading ? '#334155' : 'rgba(34,197,94,0.2)',
-          color: loading ? '#64748b' : '#22c55e',
+          width: '100%',
+          border: 'none',
+          background: loading || form.metrics.length === 0 ? '#e8eaed' : '#0ea5e9',
+          color: loading || form.metrics.length === 0 ? '#9aa0a6' : '#ffffff',
           borderRadius: 8,
           padding: '10px 14px',
-          cursor: loading ? 'not-allowed' : 'pointer',
+          cursor: loading || form.metrics.length === 0 ? 'not-allowed' : 'pointer',
           fontWeight: 700,
+          fontSize: 13,
+          transition: 'background 120ms',
         }}
       >
         {loading ? '다운로드 준비 중...' : 'CSV 다운로드'}
       </button>
-      {message && <p style={{ color: '#94a3b8', fontSize: 13, margin: '12px 0 0' }}>{message}</p>}
+
+      {message && (
+        <p style={{ color: '#0ea5e9', fontSize: 12, margin: '10px 0 0', textAlign: 'center' }}>{message}</p>
+      )}
     </div>
   );
 }

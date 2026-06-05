@@ -38,9 +38,11 @@ class TrendAnalyzer {
     }
 
     const trendLine = this.calculateTrendLine(points);
-    const slope = trendLine.length >= 2 ? trendLine[trendLine.length - 1] - trendLine[trendLine.length - 2] : 0;
+    const rawSlope = trendLine.length >= 2 ? trendLine[trendLine.length - 1] - trendLine[trendLine.length - 2] : 0;
     const lastDate = new Date(points[points.length - 1].date);
-    const lastValue = trendLine[trendLine.length - 1];
+    const lastValue = points[points.length - 1].average;
+    // slope가 너무 가파르면 days 안에 0 밑으로 내려가므로 최솟값 캡핑
+    const slope = rawSlope < 0 ? Math.max(rawSlope, -lastValue / (days + 1)) : rawSlope;
     const forecast = Array.from({ length: days }, (_, index) => {
       const date = new Date(lastDate);
       date.setDate(lastDate.getDate() + index + 1);
