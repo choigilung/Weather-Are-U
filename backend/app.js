@@ -94,10 +94,22 @@ app.get('/api/alerts/settings', getAlertSettings);
 app.get('/api/alerts/history', async (req, res) => {
   try {
     const userId = await userRepository.findOrCreateGuestUserId();
+    await weatherRepository.cleanupOldAlertRecords(userId, 5);
     const records = await weatherRepository.getAlertRecordsByUser(userId);
     res.status(200).json({ success: true, data: records });
   } catch (error) {
     console.error('알림 이력 조회 오류:', error);
+    res.status(500).json({ error: '서버 내부 오류가 발생했습니다.' });
+  }
+});
+
+app.patch('/api/alerts/history/:id/read', async (req, res) => {
+  try {
+    const userId = await userRepository.findOrCreateGuestUserId();
+    await weatherRepository.markAlertRecordAsRead(req.params.id, userId);
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('알림 읽음 처리 오류:', error);
     res.status(500).json({ error: '서버 내부 오류가 발생했습니다.' });
   }
 });

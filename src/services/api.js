@@ -21,4 +21,5 @@ export const api = {
   post: (path, body) => request('POST', path, body),
   get: (path) => request('GET', path),
   delete: (path) => request('DELETE', path),
+  patch: (path, body) => request('PATCH', path, body),
 };

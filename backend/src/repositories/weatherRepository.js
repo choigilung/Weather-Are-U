@@ -140,6 +140,29 @@ const weatherRepository = {
     return rows;
   },
 
+  async markAlertRecordAsRead(recordId, userId) {
+    const query = `
+      UPDATE alert_records
+      SET is_read = true, read_at = NOW()
+      WHERE id = $1 AND user_id = $2;
+    `;
+    await db.query(query, [recordId, userId]);
+  },
+
+  async cleanupOldAlertRecords(userId, keep = 5) {
+    const query = `
+      DELETE FROM alert_records
+      WHERE user_id = $1
+        AND id NOT IN (
+          SELECT id FROM alert_records
+          WHERE user_id = $1
+          ORDER BY created_at DESC
+          LIMIT $2
+        );
+    `;
+    await db.query(query, [userId, keep]);
+  },
+
   async deleteAlert(alertId, userId) {
     const query = `
       DELETE FROM alert_settings

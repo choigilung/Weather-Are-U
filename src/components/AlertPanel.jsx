@@ -86,6 +86,15 @@ export default function AlertPanel() {
     }
   };
 
+  const handleMarkRead = async (id) => {
+    try {
+      await api.patch(`/api/alerts/history/${id}/read`);
+      setRecords((prev) => prev.map((r) => r.id === id ? { ...r, is_read: true } : r));
+    } catch {
+      // silent
+    }
+  };
+
   return (
     <div>
       <form onSubmit={handleSave} style={{ display: 'grid', gap: 10, marginBottom: 20 }}>
@@ -228,14 +237,32 @@ export default function AlertPanel() {
               아직 발송된 알림이 없습니다.
             </p>
           ) : records.map((record) => (
-            <div key={record.id} style={{ background: '#f8f9fa', border: '1px solid #e8eaed', borderRadius: 8, padding: '12px 14px' }}>
+            <div key={record.id} style={{ background: '#f8f9fa', border: `1px solid ${record.is_read ? '#e8eaed' : '#bae6fd'}`, borderRadius: 8, padding: '12px 14px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 4 }}>
                 <span style={{ color: '#202124', fontSize: 13, fontWeight: 700 }}>
                   {record.region} / {METRICS.find((m) => m.value === record.metric)?.label || record.metric}
                 </span>
-                <span style={{ color: record.is_read ? '#9aa0a6' : '#0ea5e9', fontSize: 11, whiteSpace: 'nowrap', fontWeight: 600 }}>
-                  {record.is_read ? '읽음' : '안 읽음'}
-                </span>
+                {!record.is_read ? (
+                  <button
+                    type="button"
+                    onClick={() => handleMarkRead(record.id)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#0ea5e9',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      padding: 0,
+                      flexShrink: 0,
+                    }}
+                  >
+                    읽음으로 표시
+                  </button>
+                ) : (
+                  <span style={{ color: '#9aa0a6', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>읽음</span>
+                )}
               </div>
               <p style={{ color: '#5f6368', fontSize: 13, lineHeight: 1.45, margin: '0 0 6px' }}>
                 {record.message}

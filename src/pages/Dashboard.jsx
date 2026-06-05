@@ -200,21 +200,9 @@ export default function Dashboard() {
         top: 0,
         zIndex: 100,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <span style={{
-            width: 30,
-            height: 30,
-            borderRadius: 8,
-            background: '#0ea5e9',
-            color: '#ffffff',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 900,
-            fontSize: 12,
-            letterSpacing: 0,
-          }}>WA</span>
-          <span style={{ color: '#202124', fontWeight: 800, fontSize: 15, letterSpacing: '-0.3px' }}>WEATHER-ARE-U</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+          <img src="/favicon.svg" alt="logo" style={{ width: 26, height: 29 }} />
+          <span style={{ color: '#202124', fontWeight: 800, fontSize: 25, letterSpacing: '-0.1px' }}>WA</span>
         </div>
 
         <nav style={{ display: 'flex', alignItems: 'stretch', height: 60, flex: 1, justifyContent: 'center' }}>
@@ -558,7 +546,7 @@ export default function Dashboard() {
         )}
 
         {tab === 'map' && (
-          <MapPanel liveData={liveData} selectedRegion={selectedRegion} />
+          <MapPanel liveData={liveData} selectedRegion={selectedRegion} onSelectRegion={setSelectedRegion} />
         )}
 
         {tab === 'trends' && (

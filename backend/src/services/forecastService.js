@@ -105,6 +105,7 @@ class ForecastService {
         feelsLike: temp !== null ? calcFeelsLike(temp, wind) : null,
         humidity: ncst.humidity ?? null,
         windSpeed: wind,
+        windVec: ncst.windVec ?? null,
         windDirection: getWindDir(ncst.windVec),
         sky: fcst.currentSky ?? 1,
         pty: ncst.pty ?? 0,
