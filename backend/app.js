@@ -4,6 +4,7 @@ const weatherEngine = require('./src/services/weatherEngine');
 const weatherRepository = require('./src/repositories/weatherRepository');
 const userRepository = require('./src/repositories/userRepository');
 const trendAnalyzer = require('./src/services/trendAnalyzer');
+const forecastService = require('./src/services/forecastService');
 require('dotenv').config();
 
 const app = express();
@@ -98,6 +99,18 @@ app.get('/api/alerts/history', async (req, res) => {
   } catch (error) {
     console.error('알림 이력 조회 오류:', error);
     res.status(500).json({ error: '서버 내부 오류가 발생했습니다.' });
+  }
+});
+
+app.get('/api/weather/forecast', async (req, res) => {
+  try {
+    const { region } = req.query;
+    if (!region) return res.status(400).json({ error: 'region 파라미터가 필요합니다.' });
+    const data = await forecastService.getWeatherForecast(region);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('[weather/forecast]', error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 

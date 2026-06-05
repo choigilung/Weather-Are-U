@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../services/api';
 import AlertPanel from '../components/AlertPanel';
+import WeatherHeroCard from '../components/WeatherHeroCard';
 import ExportPanel from '../components/ExportPanel';
 import ForecastPanel from '../components/ForecastPanel';
 import MapPanel from '../components/MapPanel';
@@ -42,6 +43,8 @@ export default function Dashboard() {
   const [alertModalOpen, setAlertModalOpen] = useState(false);
   const [alertRecords, setAlertRecords] = useState([]);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [weatherForecast, setWeatherForecast] = useState(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
 
   const loadLive = useCallback(async () => {
     try {
@@ -104,6 +107,18 @@ export default function Dashboard() {
     }
   }, []);
 
+  const loadWeatherForecast = useCallback(async (region) => {
+    setWeatherLoading(true);
+    try {
+      const data = await api.get(`/api/weather/forecast?region=${encodeURIComponent(region)}`);
+      setWeatherForecast(data.data || null);
+    } catch {
+      setWeatherForecast(null);
+    } finally {
+      setWeatherLoading(false);
+    }
+  }, []);
+
   const loadAlertRecords = useCallback(async () => {
     try {
       const data = await api.get('/api/alerts/history');
@@ -120,6 +135,10 @@ export default function Dashboard() {
   }, [loadLive]);
 
   useEffect(() => { loadAlertRecords(); }, [loadAlertRecords]);
+
+  useEffect(() => {
+    loadWeatherForecast(selectedRegion);
+  }, [selectedRegion, loadWeatherForecast]);
 
   useEffect(() => {
     loadHistory(selectedRegion);
@@ -283,84 +302,12 @@ export default function Dashboard() {
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: 14, alignItems: 'start' }}>
               {/* 왼쪽 메인 */}
               <div>
-                {/* 히어로 카드 */}
-                <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, padding: '24px 28px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-                    <div>
-                      <p style={{ color: '#70757a', fontSize: 12, fontWeight: 500, margin: '0 0 6px' }}>
-                        {selectedRegion} · PM2.5 현재
-                      </p>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                        {loading ? (
-                          <span style={{ fontSize: 64, fontWeight: 900, color: '#e8eaed', lineHeight: 1 }}>--</span>
-                        ) : (
-                          <>
-                            <span style={{ fontSize: 72, fontWeight: 900, color: '#202124', lineHeight: 1, fontFamily: "'Roboto Mono', monospace" }}>
-                              {selectedData?.pm25 != null ? Number(selectedData.pm25).toFixed(1) : '--'}
-                            </span>
-                            <span style={{ fontSize: 18, color: '#70757a', fontWeight: 500 }}>ug/m³</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <span style={{
-                      padding: '6px 18px',
-                      borderRadius: 20,
-                      fontSize: 14,
-                      fontWeight: 700,
-                      background: grade.bg,
-                      color: grade.color,
-                      border: `1.5px solid ${grade.color}50`,
-                      marginTop: 4,
-                    }}>
-                      {grade.label}
-                    </span>
-                  </div>
-
-                  {/* 지표 행 */}
-                  <div style={{ borderTop: '1px solid #f1f3f4', paddingTop: 16, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0 }}>
-                    {[
-                      { label: 'PM10', value: fmt(selectedData?.pm10), unit: 'ug/m³' },
-                      { label: 'CO2', value: fmt(selectedData?.co2), unit: 'ppm' },
-                      { label: '온도', value: fmt(selectedData?.temperature), unit: '°C' },
-                      { label: '습도', value: fmt(selectedData?.humidity), unit: '%' },
-                    ].map((stat, i) => (
-                      <div key={stat.label} style={{ display: 'flex', alignItems: 'center' }}>
-                        {i > 0 && <span style={{ width: 1, height: 28, background: '#e8eaed', margin: '0 18px' }} />}
-                        <div>
-                          <p style={{ color: '#9aa0a6', fontSize: 11, fontWeight: 600, margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{stat.label}</p>
-                          <p style={{ color: '#202124', fontSize: 15, fontWeight: 700, margin: 0, fontFamily: "'Roboto Mono', monospace" }}>
-                            {stat.value}
-                            <span style={{ fontSize: 11, color: '#9aa0a6', marginLeft: 2, fontFamily: 'inherit', fontWeight: 500 }}>{stat.unit}</span>
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-                      {lastUpdated && (
-                        <span style={{ color: '#9aa0a6', fontSize: 12 }}>
-                          {lastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 갱신
-                        </span>
-                      )}
-                      <button
-                        onClick={refreshDashboard}
-                        type="button"
-                        style={{
-                          padding: '5px 14px',
-                          borderRadius: 20,
-                          border: '1px solid #e8eaed',
-                          background: '#f8f9fa',
-                          color: '#5f6368',
-                          fontSize: 12,
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        새로고침
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                {/* 날씨 히어로 카드 */}
+                <WeatherHeroCard
+                  forecast={weatherForecast}
+                  liveData={selectedData}
+                  loading={weatherLoading}
+                />
 
                 {/* 24시간 추이 차트 */}
                 <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, padding: '20px 24px', marginTop: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
