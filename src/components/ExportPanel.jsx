@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { DEFAULT_REGIONS, fetchRegions } from '../services/regions';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const REGIONS = ['서울', '부산', '인천', '대구', '창원'];
 const METRICS = [
   { key: 'pm25', label: 'PM2.5' },
   { key: 'pm10', label: 'PM10' },
@@ -33,6 +33,15 @@ export default function ExportPanel({ selectedRegion }) {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [regions, setRegions] = useState(DEFAULT_REGIONS);
+
+  useEffect(() => {
+    fetchRegions().then((items) => setRegions(items.map((region) => region.name)));
+  }, []);
+
+  useEffect(() => {
+    if (selectedRegion) setForm((prev) => ({ ...prev, region: selectedRegion }));
+  }, [selectedRegion]);
 
   const toggleMetric = (metric) => {
     setForm((prev) => ({
@@ -104,7 +113,7 @@ export default function ExportPanel({ selectedRegion }) {
             onChange={(e) => setForm((prev) => ({ ...prev, region: e.target.value }))}
             style={inputStyle}
           >
-            {REGIONS.map((r) => <option key={r}>{r}</option>)}
+            {regions.map((r) => <option key={r}>{r}</option>)}
           </select>
         </div>
       </div>

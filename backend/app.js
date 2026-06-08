@@ -5,14 +5,31 @@ const weatherRepository = require('./src/repositories/weatherRepository');
 const userRepository = require('./src/repositories/userRepository');
 const trendAnalyzer = require('./src/services/trendAnalyzer');
 const forecastService = require('./src/services/forecastService');
+const regionService = require('./src/services/regionService');
+const externalStatusService = require('./src/services/externalStatusService');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const TARGET_REGIONS = ['서울', '부산', '인천', '대구', '창원'];
+const TARGET_REGIONS = regionService.REGION_NAMES;
 
 app.use(cors());
 app.use(express.json());
+
+app.get('/api/regions', (req, res) => {
+  const regions = regionService.getRegions();
+  res.status(200).json({ success: true, count: regions.length, data: regions });
+});
+
+app.get('/api/external/status', async (req, res) => {
+  try {
+    const status = await externalStatusService.getExternalStatus();
+    res.status(200).json(status);
+  } catch (error) {
+    console.error('외부 API 상태 확인 오류:', error);
+    res.status(500).json({ success: false, error: '외부 API 상태 확인 중 오류가 발생했습니다.' });
+  }
+});
 
 app.get('/api/environment/live', async (req, res) => {
   try {

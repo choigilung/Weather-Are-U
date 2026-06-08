@@ -1,21 +1,6 @@
 const axios = require('axios');
+const { getRegionCoords, getRegionGrid } = require('./regionService');
 require('dotenv').config();
-
-const REGION_GRID = {
-  서울: { nx: 60, ny: 127 },
-  부산: { nx: 98, ny: 76 },
-  인천: { nx: 55, ny: 124 },
-  대구: { nx: 89, ny: 90 },
-  창원: { nx: 89, ny: 76 },
-};
-
-const REGION_COORDS = {
-  서울: { lat: 37.5665, lon: 126.978 },
-  부산: { lat: 35.1796, lon: 129.0756 },
-  인천: { lat: 37.4563, lon: 126.7052 },
-  대구: { lat: 35.8714, lon: 128.6014 },
-  창원: { lat: 35.2279, lon: 128.6811 },
-};
 
 const SKY_LABEL = { 1: '맑음', 3: '구름많음', 4: '흐림' };
 const PTY_LABEL = { 0: '', 1: '비', 2: '비/눈', 3: '눈', 5: '빗방울', 6: '빗방울/눈날림', 7: '눈날림' };
@@ -78,8 +63,8 @@ function getVilageBase() {
 
 class ForecastService {
   async getWeatherForecast(region) {
-    const grid = REGION_GRID[region];
-    const coords = REGION_COORDS[region];
+    const grid = getRegionGrid(region);
+    const coords = getRegionCoords(region);
     if (!grid) throw new Error('지원하지 않는 지역입니다.');
 
     const weatherKey = process.env.WEATHER_API_KEY;
@@ -244,15 +229,29 @@ class ForecastService {
         timeout: 8000,
       }
     );
+
+    const jsonItem = res.data?.response?.body?.items?.item;
+    if (jsonItem) {
+      return {
+        sunrise: formatSunTime(jsonItem.sunrise),
+        sunset: formatSunTime(jsonItem.sunset),
+      };
+    }
+
     const xml = typeof res.data === 'string' ? res.data : '';
     const extract = (tag) => {
       const m = xml.match(new RegExp(`<${tag}>([^<]+)</${tag}>`));
       if (!m) return null;
-      const v = m[1].trim();
-      return v.length >= 4 ? `${v.slice(0, 2)}:${v.slice(2, 4)}` : v;
+      return formatSunTime(m[1]);
     };
     return { sunrise: extract('sunrise'), sunset: extract('sunset') };
   }
+}
+
+function formatSunTime(value) {
+  if (value === null || value === undefined) return null;
+  const text = String(value).trim().padStart(4, '0');
+  return text.length >= 4 ? `${text.slice(0, 2)}:${text.slice(2, 4)}` : text;
 }
 
 module.exports = new ForecastService();

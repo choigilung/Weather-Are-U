@@ -8,9 +8,9 @@ import MapPanel from '../components/MapPanel';
 import PdfReportButton from '../components/PdfReportButton';
 import Pm25LineChart from '../components/Pm25LineChart';
 import TrendChart, { TrendMessage } from '../components/TrendChart';
+import { DEFAULT_REGION_META, fetchRegions } from '../services/regions';
 import { fmt, getPm25Grade } from '../utils/grade';
 
-const REGIONS = ['서울', '부산', '인천', '대구', '창원'];
 const CHART_METRICS = [
   { key: 'pm25', label: 'PM2.5', unit: 'ug/m3', color: '#1589F0', minMax: 20, padding: 8, step: 10 },
   { key: 'pm10', label: 'PM10', unit: 'ug/m3', color: '#1589F0', minMax: 30, padding: 10, step: 10 },
@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [weatherForecast, setWeatherForecast] = useState(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
+  const [regionMeta, setRegionMeta] = useState(DEFAULT_REGION_META);
 
   const loadLive = useCallback(async () => {
     try {
@@ -127,6 +128,10 @@ export default function Dashboard() {
     return () => clearInterval(timer);
   }, [loadLive]);
 
+  useEffect(() => {
+    fetchRegions().then(setRegionMeta);
+  }, []);
+
   useEffect(() => { loadAlertRecords(); }, [loadAlertRecords]);
 
   useEffect(() => {
@@ -155,7 +160,13 @@ export default function Dashboard() {
   );
   const chartMetric = CHART_METRICS.find((m) => m.key === chartMetricKey) || CHART_METRICS[0];
   const trendMetric = CHART_METRICS.find((m) => m.key === trendMetricKey) || CHART_METRICS[0];
-  const regionList = liveData.length ? liveData : REGIONS.map((r) => ({ region: r }));
+  const regionList = useMemo(() => {
+    const liveByRegion = new Map(liveData.map((item) => [item.region, item]));
+    const knownNames = new Set(regionMeta.map((region) => region.name));
+    const ordered = regionMeta.map((region) => liveByRegion.get(region.name) || { region: region.name });
+    const extras = liveData.filter((item) => !knownNames.has(item.region));
+    return [...ordered, ...extras];
+  }, [liveData, regionMeta]);
 
   useEffect(() => {
     if (!alertModalOpen) return;
@@ -337,7 +348,19 @@ export default function Dashboard() {
                         <p style={{ color: '#202124', fontSize: 13, fontWeight: 600, margin: 0 }}>{card.title}</p>
                         <p style={{ color: card.color, fontSize: 12, fontWeight: 700, margin: 0 }}>{card.grade}</p>
                         {card.value && (
-                          <p style={{ color: '#5f6368', fontSize: 11, fontWeight: 500, lineHeight: 1.35, margin: 0, textAlign: 'center', wordBreak: 'keep-all' }}>
+                          <p style={{
+                            color: '#5f6368',
+                            fontSize: 11,
+                            fontWeight: 500,
+                            lineHeight: 1.35,
+                            margin: 0,
+                            textAlign: 'center',
+                            wordBreak: 'keep-all',
+                            overflow: 'hidden',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                          }}>
                             {card.value}
                           </p>
                         )}
@@ -543,7 +566,7 @@ export default function Dashboard() {
         )}
 
         {tab === 'map' && (
-          <MapPanel liveData={liveData} selectedRegion={selectedRegion} onSelectRegion={setSelectedRegion} />
+          <MapPanel liveData={liveData} selectedRegion={selectedRegion} onSelectRegion={setSelectedRegion} regions={regionMeta} />
         )}
 
         {tab === 'trends' && (
@@ -745,10 +768,10 @@ function EmojiGauge({ color, grade, score, size = 68 }) {
 function getLifestyleCards(data) {
   if (!data) {
     return [
-      { title: '세탁지수', grade: '보통', score: 55, color: '#eab308' },
-      { title: '운동지수', grade: '보통', score: 55, color: '#eab308' },
-      { title: '코디추천', grade: '보통', score: 55, color: '#eab308' },
-      { title: '외출지수', grade: '보통', score: 55, color: '#eab308' },
+      { title: '세탁지수', grade: '보통', value: '지역 데이터를 확인 중이에요.', score: 55, color: '#eab308' },
+      { title: '운동지수', grade: '보통', value: '운동하기 좋은지 확인 중이에요.', score: 55, color: '#eab308' },
+      { title: '코디추천', grade: '보통', value: '오늘의 옷차림을 확인 중이에요.', score: 55, color: '#eab308' },
+      { title: '외출지수', grade: '보통', value: '외출 준비물을 확인 중이에요.', score: 55, color: '#eab308' },
     ];
   }
 
@@ -765,18 +788,21 @@ function getLifestyleCards(data) {
   const umbrellaCare = humidity >= 75;
   const maskCare = pm25 > 35 || pm10 > 80;
 
-  const outfit = getOutfitRecommendation({ temp, umbrellaCare, maskCare });
+  const outfit = getOutfitRecommendation({ temp, umbrellaCare });
+  const outingComment = getOutingComment({ outingBad, outingCare, maskCare, umbrellaCare });
 
   return [
     {
       title: '세탁지수',
       grade: laundryBad ? '나쁨' : '좋음',
+      value: laundryBad ? '오늘은 실내건조 추천!' : '오늘은 야외건조하기 좋은 날씨에요!',
       score: laundryBad ? 35 : 85,
       color: laundryBad ? '#f97316' : '#22c55e',
     },
     {
       title: '운동지수',
       grade: exerciseBad ? '나쁨' : exerciseCare ? '보통' : '좋음',
+      value: exerciseBad ? '오늘은 실내운동을 추천해요.' : exerciseCare ? '가벼운 산책 정도가 좋아요.' : '러닝하기 딱 좋은 날씨!',
       score: exerciseBad ? 30 : exerciseCare ? 60 : 88,
       color: exerciseBad ? '#f97316' : exerciseCare ? '#eab308' : '#22c55e',
     },
@@ -790,13 +816,14 @@ function getLifestyleCards(data) {
     {
       title: '외출지수',
       grade: outingBad ? '나쁨' : outingCare ? '보통' : '좋음',
+      value: outingComment,
       score: outingBad ? 30 : outingCare ? 58 : 86,
       color: outingBad ? '#f97316' : outingCare ? '#eab308' : '#22c55e',
     },
   ];
 }
 
-function getOutfitRecommendation({ temp, umbrellaCare, maskCare }) {
+function getOutfitRecommendation({ temp, umbrellaCare }) {
   let base;
   let grade = '좋음';
   let score = 82;
@@ -831,7 +858,6 @@ function getOutfitRecommendation({ temp, umbrellaCare, maskCare }) {
   }
 
   const items = [];
-  if (maskCare) items.push('마스크');
   if (umbrellaCare) items.push('우산 확인');
 
   if (items.length && grade === '좋음') {
@@ -846,4 +872,18 @@ function getOutfitRecommendation({ temp, umbrellaCare, maskCare }) {
     score,
     color,
   };
+}
+
+function getOutingComment({ outingBad, outingCare, maskCare, umbrellaCare }) {
+  const items = [];
+  if (maskCare) items.push('마스크 챙기기');
+  if (umbrellaCare) items.push('우산 확인');
+
+  if (outingBad) {
+    return items.length ? `외출은 짧게, ${items.join('·')}!` : '오래 외출은 피하는 게 좋아요.';
+  }
+  if (outingCare) {
+    return items.length ? `나갈 땐 ${items.join('·')}!` : '민감하면 외출 시간을 줄여요.';
+  }
+  return items.length ? `외출하기 좋아요. ${items.join('·')}!` : '가볍게 외출하기 좋은 날이에요!';
 }

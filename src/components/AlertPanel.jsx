@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../services/api';
+import { DEFAULT_REGIONS, fetchRegions } from '../services/regions';
 
 const METRICS = [
   { value: 'pm25', label: 'PM2.5 (ug/m3)' },
@@ -8,8 +9,6 @@ const METRICS = [
   { value: 'temperature', label: '온도 (C)' },
   { value: 'humidity', label: '습도 (%)' },
 ];
-
-const REGIONS = ['서울', '부산', '인천', '대구', '창원'];
 
 const inputStyle = {
   background: '#f8f9fa',
@@ -26,6 +25,7 @@ const inputStyle = {
 export default function AlertPanel() {
   const [alerts, setAlerts] = useState([]);
   const [records, setRecords] = useState([]);
+  const [regions, setRegions] = useState(DEFAULT_REGIONS);
   const [form, setForm] = useState({ region: '서울', metric: 'pm25', threshold: '', condition: 'gt' });
   const [saving, setSaving] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -58,6 +58,10 @@ export default function AlertPanel() {
     loadAlerts();
     loadHistory();
   }, [loadAlerts, loadHistory]);
+
+  useEffect(() => {
+    fetchRegions().then((items) => setRegions(items.map((region) => region.name)));
+  }, []);
 
   const handleSave = async (event) => {
     event.preventDefault();
@@ -102,7 +106,7 @@ export default function AlertPanel() {
           <div>
             <label style={{ color: '#70757a', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 5 }}>지역</label>
             <select value={form.region} onChange={(e) => setForm((p) => ({ ...p, region: e.target.value }))} style={inputStyle}>
-              {REGIONS.map((r) => <option key={r}>{r}</option>)}
+              {regions.map((r) => <option key={r}>{r}</option>)}
             </select>
           </div>
           <div>
