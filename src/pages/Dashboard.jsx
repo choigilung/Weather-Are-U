@@ -4,7 +4,7 @@ import AlertPanel from '../components/AlertPanel';
 import WeatherHeroCard from '../components/WeatherHeroCard';
 import ExportPanel from '../components/ExportPanel';
 import ForecastPanel from '../components/ForecastPanel';
-import MapPanel from '../components/MapPanel';
+import MapPanel from '../components/NaverMapPanel';
 import PdfReportButton from '../components/PdfReportButton';
 import Pm25LineChart from '../components/Pm25LineChart';
 import TrendChart, { TrendMessage } from '../components/TrendChart';

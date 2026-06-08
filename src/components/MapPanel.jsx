@@ -56,6 +56,22 @@ function fmtValue(value, suffix = '') {
   return `${Math.round(Number(value))}${suffix}`;
 }
 
+const MAP_STYLES = {
+  weather: [
+    { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+    { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  ],
+  radar: [
+    { elementType: 'geometry', stylers: [{ color: '#4a4a4a' }] },
+    { elementType: 'labels.text.fill', stylers: [{ color: '#d1d5db' }] },
+    { elementType: 'labels.text.stroke', stylers: [{ color: '#303030' }] },
+    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#3d3d3d' }] },
+    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#5a5a5a' }] },
+    { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+    { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  ],
+};
+
 let mapsScriptPromise = null;
 
 function loadGoogleMaps() {
@@ -201,6 +217,7 @@ export default function MapPanel({ liveData, selectedRegion, onSelectRegion, reg
   const markerOverlaysRef = useRef([]);
   const windOverlaysRef = useRef([]);
   const pm25CirclesRef = useRef([]);
+  const radarCirclesRef = useRef([]);
 
   const [status, setStatus] = useState('loading');
   const [mapError, setMapError] = useState('');
@@ -208,6 +225,10 @@ export default function MapPanel({ liveData, selectedRegion, onSelectRegion, reg
   const [forecast, setForecast] = useState(null);
   const [forecastLoading, setForecastLoading] = useState(false);
   const [layers, setLayers] = useState({ temp: false, wind: true, air: false });
+  const [mediaMode, setMediaMode] = useState('weather');
+  const [mediaMenuOpen, setMediaMenuOpen] = useState(false);
+  const [mediaPlaying, setMediaPlaying] = useState(false);
+  const [mediaFrame, setMediaFrame] = useState(0);
   const [allForecasts, setAllForecasts] = useState({});
   const [allForecastsLoading, setAllForecastsLoading] = useState(false);
   const [regions, setRegions] = useState(initialRegions?.length ? initialRegions : DEFAULT_REGION_META);
@@ -286,10 +307,7 @@ export default function MapPanel({ liveData, selectedRegion, onSelectRegion, reg
           fullscreenControl: false,
           zoomControl: true,
           zoomControlOptions: { position: maps.ControlPosition.LEFT_BOTTOM },
-          styles: [
-            { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-            { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-          ],
+          styles: MAP_STYLES.weather,
         });
 
         setStatus('ready');
@@ -301,6 +319,33 @@ export default function MapPanel({ liveData, selectedRegion, onSelectRegion, reg
     loadForecast(selectedRegion || '서울');
     return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (status !== 'ready' || !mapRef.current || !window.google?.maps) return;
+    const maps = window.google.maps;
+
+    if (mediaMode === 'satellite') {
+      mapRef.current.setMapTypeId(maps.MapTypeId.HYBRID);
+      mapRef.current.setOptions({ styles: null });
+      return;
+    }
+
+    mapRef.current.setMapTypeId(maps.MapTypeId.ROADMAP);
+    mapRef.current.setOptions({ styles: mediaMode === 'radar' ? MAP_STYLES.radar : MAP_STYLES.weather });
+  }, [mediaMode, status]);
+
+  useEffect(() => {
+    if (!mediaPlaying || mediaMode === 'weather') return undefined;
+    const timer = setInterval(() => {
+      setMediaFrame((frame) => (frame + 1) % 5);
+    }, 1100);
+    return () => clearInterval(timer);
+  }, [mediaMode, mediaPlaying]);
+
+  useEffect(() => {
+    setMediaPlaying(false);
+    setMediaFrame(0);
+  }, [mediaMode]);
 
   // Wind layer: fetch all region forecasts once
   useEffect(() => {
@@ -336,6 +381,7 @@ export default function MapPanel({ liveData, selectedRegion, onSelectRegion, reg
     if (status !== 'ready' || !mapRef.current || !OverlayClass.current) return;
     markerOverlaysRef.current.forEach((o) => o.setMap(null));
     markerOverlaysRef.current = [];
+    if (mediaMode === 'radar') return;
 
     const Overlay = OverlayClass.current;
     regionNames.forEach((region) => {
@@ -375,7 +421,7 @@ export default function MapPanel({ liveData, selectedRegion, onSelectRegion, reg
       overlay.setMap(mapRef.current);
       markerOverlaysRef.current.push(overlay);
     });
-  }, [status, liveData, activeRegion, allForecasts, handleRegionClick, regionCoords, regionNames]);
+  }, [status, liveData, activeRegion, allForecasts, handleRegionClick, regionCoords, regionNames, mediaMode]);
 
   // PM2.5 circles
   useEffect(() => {
@@ -393,6 +439,39 @@ export default function MapPanel({ liveData, selectedRegion, onSelectRegion, reg
       }));
     });
   }, [status, layers.air, liveData, regionCoords, regionNames]);
+
+  useEffect(() => {
+    if (status !== 'ready' || !mapRef.current || !window.google?.maps) return;
+    radarCirclesRef.current.forEach((circle) => circle.setMap(null));
+    radarCirclesRef.current = [];
+    if (mediaMode !== 'radar') return;
+
+    const maps = window.google.maps;
+    const frameShift = mediaFrame * 0.12;
+    const cells = [
+      { center: { lat: 34.0 + frameShift, lng: 129.2 + frameShift }, radius: 360000, color: '#2563eb', opacity: 0.34 },
+      { center: { lat: 34.2 + frameShift, lng: 128.7 + frameShift }, radius: 260000, color: '#22c55e', opacity: 0.36 },
+      { center: { lat: 34.45 + frameShift, lng: 128.35 + frameShift }, radius: 180000, color: '#eab308', opacity: 0.38 },
+      { center: { lat: 34.65 + frameShift, lng: 128.1 + frameShift }, radius: 95000, color: '#ef4444', opacity: 0.42 },
+      { center: { lat: 38.15 - frameShift * 0.25, lng: 129.3 + frameShift * 0.4 }, radius: 155000, color: '#2563eb', opacity: 0.34 },
+      { center: { lat: 38.2 - frameShift * 0.25, lng: 129.15 + frameShift * 0.4 }, radius: 85000, color: '#22c55e', opacity: 0.36 },
+      { center: { lat: 38.24 - frameShift * 0.25, lng: 129.05 + frameShift * 0.4 }, radius: 42000, color: '#ef4444', opacity: 0.42 },
+    ];
+
+    cells.forEach((cell) => {
+      radarCirclesRef.current.push(new maps.Circle({
+        map: mapRef.current,
+        center: cell.center,
+        radius: cell.radius,
+        fillColor: cell.color,
+        fillOpacity: cell.opacity,
+        strokeColor: cell.color,
+        strokeOpacity: 0,
+        strokeWeight: 0,
+        clickable: false,
+      }));
+    });
+  }, [mediaFrame, mediaMode, status]);
 
   // Wind overlays
   useEffect(() => {
@@ -435,6 +514,7 @@ export default function MapPanel({ liveData, selectedRegion, onSelectRegion, reg
 
   const currentLive = liveData.find((item) => item.region === activeRegion) || {};
   const hourly = forecast?.hourly || [];
+  const showWeatherPanel = mediaMode === 'weather';
 
   return (
     <div style={{ margin: '-20px -28px', height: 'calc(100vh - 60px)', position: 'relative', overflow: 'hidden' }}>
@@ -446,7 +526,7 @@ export default function MapPanel({ liveData, selectedRegion, onSelectRegion, reg
 
       <div ref={mapEl} style={{ width: '100%', height: '100%' }} />
 
-      {layers.wind && (
+      {layers.wind && mediaMode === 'weather' && (
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 6 }}>
           {Array.from({ length: 30 }).map((_, idx) => (
             <span
@@ -462,6 +542,9 @@ export default function MapPanel({ liveData, selectedRegion, onSelectRegion, reg
           ))}
         </div>
       )}
+
+      {mediaMode === 'radar' && <RadarOverlay />}
+      {mediaMode === 'satellite' && <SatelliteOverlay />}
 
       {status === 'error' && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f7f8fa', zIndex: 20 }}>
@@ -489,7 +572,7 @@ export default function MapPanel({ liveData, selectedRegion, onSelectRegion, reg
       )}
 
       {/* Selected region popup */}
-      {forecast && (
+      {forecast && mediaMode !== 'radar' && (
         <div style={{
           position: 'absolute',
           top: 12,
@@ -534,10 +617,80 @@ export default function MapPanel({ liveData, selectedRegion, onSelectRegion, reg
 
       {/* Layer toggles */}
       <div style={{ position: 'absolute', top: 18, right: 18, zIndex: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ position: 'relative' }}>
+          <button
+            type="button"
+            onClick={() => setMediaMenuOpen((prev) => !prev)}
+            style={{
+              background: mediaMode === 'weather' ? 'rgba(255,255,255,0.94)' : '#0ea5e9',
+              color: mediaMode === 'weather' ? '#202124' : '#ffffff',
+              border: `1px solid ${mediaMode === 'weather' ? '#d7dde5' : '#0ea5e9'}`,
+              borderRadius: 8,
+              padding: '10px 13px',
+              fontSize: 13,
+              fontWeight: 900,
+              lineHeight: 1.2,
+              cursor: 'pointer',
+              backdropFilter: 'blur(8px)',
+              boxShadow: '0 2px 8px rgba(15,23,42,0.16)',
+              fontFamily: 'system-ui',
+              minWidth: 64,
+            }}
+          >
+            영상
+          </button>
+          {mediaMenuOpen && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              right: 76,
+              width: 180,
+              background: '#ffffff',
+              border: '1px solid #d7dde5',
+              borderRadius: 10,
+              boxShadow: '0 8px 26px rgba(15,23,42,0.22)',
+              overflow: 'hidden',
+            }}>
+              {[
+                { id: 'weather', label: '기본 날씨' },
+                { id: 'satellite', label: '위성' },
+                { id: 'radar', label: '레이더' },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setMediaMode(item.id);
+                    setMediaMenuOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    border: 'none',
+                    borderBottom: item.id === 'radar' ? 'none' : '1px solid #eef2f7',
+                    background: mediaMode === item.id ? '#0ea5e9' : '#ffffff',
+                    color: mediaMode === item.id ? '#ffffff' : '#202124',
+                    padding: '13px 15px',
+                    fontSize: 14,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  {item.label}
+                  {mediaMode === item.id && <span>✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         {[{ key: 'temp', label: '기온' }, { key: 'wind', label: '바람' }, { key: 'air', label: '대기질' }].map(({ key, label }) => (
           <button
             key={key}
             onClick={() => toggleLayer(key)}
+            disabled={mediaMode === 'radar'}
             style={{
               background: layers[key] ? '#0ea5e9' : 'rgba(255,255,255,0.94)',
               color: layers[key] ? '#fff' : '#202124',
@@ -551,6 +704,7 @@ export default function MapPanel({ liveData, selectedRegion, onSelectRegion, reg
               boxShadow: '0 2px 8px rgba(15,23,42,0.16)',
               fontFamily: 'system-ui',
               minWidth: 64,
+              opacity: mediaMode === 'radar' ? 0.55 : 1,
             }}
           >
             {label}{key === 'wind' && allForecastsLoading ? ' ···' : ''}
@@ -559,7 +713,8 @@ export default function MapPanel({ liveData, selectedRegion, onSelectRegion, reg
       </div>
 
       {/* Bottom forecast panel */}
-      <div style={{
+      {showWeatherPanel ? (
+        <div style={{
         position: 'absolute',
         bottom: 18,
         left: '50%',
@@ -640,6 +795,136 @@ export default function MapPanel({ liveData, selectedRegion, onSelectRegion, reg
           <p style={{ color: '#9aa0a6', fontSize: 12, margin: 0 }}>예보 정보 없음</p>
         )}
       </div>
+      ) : (
+        <MediaTimeline
+          mode={mediaMode}
+          frame={mediaFrame}
+          playing={mediaPlaying}
+          onFrameChange={setMediaFrame}
+          onTogglePlay={() => setMediaPlaying((playing) => !playing)}
+        />
+      )}
+    </div>
+  );
+}
+
+function RadarOverlay() {
+  return (
+    <>
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'rgba(20,20,20,0.34)', zIndex: 5 }} />
+      <div style={{
+        position: 'absolute',
+        left: 44,
+        top: 124,
+        zIndex: 18,
+        width: 44,
+        borderRadius: 8,
+        background: 'rgba(18,18,18,0.86)',
+        padding: '10px 8px',
+        color: '#fff',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.24)',
+      }}>
+        <div style={{ height: 116, borderRadius: 6, background: 'linear-gradient(0deg,#38bdf8,#2563eb,#22c55e,#eab308,#ef4444,#7f1d1d)', marginBottom: 7 }} />
+        {[60, 25, 10, 5, 1].map((value) => (
+          <p key={value} style={{ margin: '0 0 3px', fontSize: 9, fontWeight: 800, textAlign: 'center' }}>{value}</p>
+        ))}
+        <p style={{ margin: 0, fontSize: 9, fontWeight: 800, textAlign: 'center' }}>mm</p>
+      </div>
+    </>
+  );
+}
+
+function SatelliteOverlay() {
+  return null;
+}
+
+function MediaTimeline({ mode, frame, playing, onFrameChange, onTogglePlay }) {
+  const now = new Date();
+  const times = mode === 'radar' ? ['14:40', '15:00', '15:20', '15:40', '16:00'] : ['09:00', '10:00', '11:00', '12:00', '현재'];
+
+  return (
+    <div style={{
+      position: 'absolute',
+      left: 210,
+      right: 220,
+      bottom: 24,
+      zIndex: 20,
+      height: 42,
+      borderRadius: 8,
+      background: mode === 'radar' ? 'rgba(21,128,61,0.72)' : 'rgba(15,23,42,0.68)',
+      boxShadow: '0 8px 26px rgba(15,23,42,0.22)',
+      display: 'flex',
+      alignItems: 'center',
+      padding: '0 14px',
+      gap: 14,
+      color: '#fff',
+      backdropFilter: 'blur(8px)',
+    }}>
+      <button type="button" onClick={onTogglePlay} style={{
+        width: 30,
+        height: 30,
+        borderRadius: 6,
+        border: 'none',
+        background: 'rgba(0,0,0,0.45)',
+        color: '#fff',
+        cursor: 'pointer',
+        fontSize: 14,
+        fontWeight: 900,
+      }}>
+        {playing ? 'Ⅱ' : '▶'}
+      </button>
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: `repeat(${times.length}, 1fr)`, alignItems: 'center', gap: 0 }}>
+        {times.map((time, idx) => (
+          <button
+            key={time}
+            type="button"
+            onClick={() => onFrameChange(idx)}
+            style={{
+              position: 'relative',
+              height: 26,
+              border: 'none',
+              borderTop: `3px solid ${idx <= frame ? '#ffffff' : 'rgba(255,255,255,0.32)'}`,
+              background: 'transparent',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
+            {idx === frame && (
+              <span style={{
+                position: 'absolute',
+                top: -7,
+                left: 0,
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                background: '#ffffff',
+                boxShadow: '0 0 0 3px rgba(255,255,255,0.2)',
+              }} />
+            )}
+            <span style={{
+              position: 'absolute',
+              top: 8,
+              right: idx === times.length - 1 ? 0 : 'auto',
+              color: 'rgba(255,255,255,0.82)',
+              fontSize: 11,
+              fontWeight: 800,
+            }}>
+              {time}
+            </span>
+          </button>
+        ))}
+      </div>
+      <span style={{
+        background: '#22c55e',
+        color: '#052e16',
+        borderRadius: 6,
+        padding: '5px 9px',
+        fontSize: 12,
+        fontWeight: 900,
+        whiteSpace: 'nowrap',
+      }}>
+        {mode === 'radar' ? '레이더' : '위성'} {times[frame] || now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+      </span>
     </div>
   );
 }
