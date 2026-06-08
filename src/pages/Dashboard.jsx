@@ -28,7 +28,6 @@ export default function Dashboard() {
   const [selectedRegion, setSelectedRegion] = useState('서울');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [lastUpdated, setLastUpdated] = useState(null);
   const [tab, setTab] = useState('dashboard');
   const [chartMetricKey, setChartMetricKey] = useState('pm25');
   const [trendPeriod, setTrendPeriod] = useState('7d');
@@ -51,7 +50,6 @@ export default function Dashboard() {
       setError('');
       const data = await api.get('/api/environment/live');
       setLiveData(data.data || []);
-      setLastUpdated(new Date());
     } catch (err) {
       setError(err.message);
     } finally {
@@ -71,11 +69,6 @@ export default function Dashboard() {
       setHistoryLoading(false);
     }
   }, []);
-
-  const refreshDashboard = useCallback(() => {
-    loadLive();
-    loadHistory(selectedRegion);
-  }, [loadLive, loadHistory, selectedRegion]);
 
   const loadTrend = useCallback(async ({ region, metric, period }) => {
     setTrendLoading(true);
@@ -155,7 +148,6 @@ export default function Dashboard() {
     () => liveData.find((item) => item.region === selectedRegion),
     [liveData, selectedRegion],
   );
-  const grade = getPm25Grade(selectedData?.pm25);
   const lifestyleCards = getLifestyleCards(selectedData);
   const chartData = useMemo(
     () => [...history].sort((a, b) => new Date(a.measured_at) - new Date(b.measured_at)),
@@ -344,6 +336,11 @@ export default function Dashboard() {
                         <EmojiGauge color={card.color} grade={card.grade} score={card.score} size={68} />
                         <p style={{ color: '#202124', fontSize: 13, fontWeight: 600, margin: 0 }}>{card.title}</p>
                         <p style={{ color: card.color, fontSize: 12, fontWeight: 700, margin: 0 }}>{card.grade}</p>
+                        {card.value && (
+                          <p style={{ color: '#5f6368', fontSize: 11, fontWeight: 500, lineHeight: 1.35, margin: 0, textAlign: 'center', wordBreak: 'keep-all' }}>
+                            {card.value}
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -756,6 +753,7 @@ function getLifestyleCards(data) {
   }
 
   const pm25 = Number(data.pm25 ?? 0);
+  const pm10 = Number(data.pm10 ?? 0);
   const temp = Number(data.temperature ?? 20);
   const humidity = Number(data.humidity ?? 50);
 
@@ -764,12 +762,10 @@ function getLifestyleCards(data) {
   const exerciseCare = pm25 > 35;
   const outingBad = pm25 > 75;
   const outingCare = pm25 > 35;
+  const umbrellaCare = humidity >= 75;
+  const maskCare = pm25 > 35 || pm10 > 80;
 
-  let outfit = '가벼운 옷차림';
-  if (temp <= 5) outfit = '두꺼운 외투';
-  else if (temp <= 12) outfit = '외투 챙기기';
-  else if (temp <= 17) outfit = '얇은 겉옷';
-  else if (temp >= 24) outfit = '반팔 추천';
+  const outfit = getOutfitRecommendation({ temp, umbrellaCare, maskCare });
 
   return [
     {
@@ -786,10 +782,10 @@ function getLifestyleCards(data) {
     },
     {
       title: '코디추천',
-      value: outfit,
-      grade: temp >= 24 || temp <= 12 ? '보통' : '좋음',
-      score: temp >= 24 || temp <= 12 ? 65 : 82,
-      color: temp >= 24 || temp <= 12 ? '#eab308' : '#22c55e',
+      value: outfit.text,
+      grade: outfit.grade,
+      score: outfit.score,
+      color: outfit.color,
     },
     {
       title: '외출지수',
@@ -798,4 +794,56 @@ function getLifestyleCards(data) {
       color: outingBad ? '#f97316' : outingCare ? '#eab308' : '#22c55e',
     },
   ];
+}
+
+function getOutfitRecommendation({ temp, umbrellaCare, maskCare }) {
+  let base;
+  let grade = '좋음';
+  let score = 82;
+  let color = '#22c55e';
+
+  if (temp <= 4) {
+    base = '패딩·목도리';
+    grade = '보통';
+    score = 58;
+    color = '#eab308';
+  } else if (temp <= 8) {
+    base = '코트·니트';
+    grade = '보통';
+    score = 62;
+    color = '#eab308';
+  } else if (temp <= 12) {
+    base = '자켓·가디건';
+    grade = '보통';
+    score = 66;
+    color = '#eab308';
+  } else if (temp <= 17) {
+    base = '얇은 겉옷';
+  } else if (temp <= 22) {
+    base = '긴팔·셔츠';
+  } else if (temp <= 27) {
+    base = '반팔·얇은 옷';
+  } else {
+    base = '통풍 잘되는 옷';
+    grade = '보통';
+    score = 64;
+    color = '#eab308';
+  }
+
+  const items = [];
+  if (maskCare) items.push('마스크');
+  if (umbrellaCare) items.push('우산 확인');
+
+  if (items.length && grade === '좋음') {
+    grade = '보통';
+    score = 68;
+    color = '#eab308';
+  }
+
+  return {
+    text: items.length ? `${base} + ${items.join('·')}` : base,
+    grade,
+    score,
+    color,
+  };
 }

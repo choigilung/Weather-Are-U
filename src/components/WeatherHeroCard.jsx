@@ -54,6 +54,8 @@ function HourlyItem({ item, isNow }) {
 
 export default function WeatherHeroCard({ forecast, liveData, loading }) {
   const pm25Grade = getPm25Grade(liveData?.pm25);
+  const tomorrowDate = new Date();
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
 
   if (loading || !forecast) {
     return (
@@ -96,7 +98,7 @@ export default function WeatherHeroCard({ forecast, liveData, loading }) {
         {/* 내일 */}
         <div style={{ padding: '24px 24px 20px', borderLeft: '1px solid #f1f3f4', minWidth: 160 }}>
           <p style={{ color: '#70757a', fontSize: 12, fontWeight: 500, margin: '0 0 10px' }}>
-            내일 {new Date(Date.now() + 86400000).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}
+            내일 {tomorrowDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}
           </p>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 10 }}>
             <span style={{ color: '#0369a1', fontSize: 14, fontWeight: 500 }}>최저</span>
