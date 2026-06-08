@@ -2,8 +2,8 @@ export default function TrendChart({ data, metric }) {
   if (!data.length) return <TrendMessage>분석에 필요한 데이터가 충분하지 않습니다.</TrendMessage>;
 
   const width = 760;
-  const height = 260;
-  const pad = { top: 20, right: 20, bottom: 42, left: 48 };
+  const height = 190;
+  const pad = { top: 18, right: 18, bottom: 32, left: 42 };
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
 
@@ -29,12 +29,23 @@ export default function TrendChart({ data, metric }) {
   const avgPoints = data.map((point, index) => toPoint(Number(point.average) || 0, index));
   const avgPath = avgPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
   const fillPath = `${avgPath} L ${avgPoints[avgPoints.length - 1].x} ${pad.top + innerH} L ${avgPoints[0].x} ${pad.top + innerH} Z`;
+  const formatDate = (date) => {
+    const parsed = new Date(date);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toLocaleDateString('ko-KR', { month: 'numeric', day: '2-digit' }).replace(/\s/g, '');
+    }
+    return String(date).slice(5, 10).replace('-', '.');
+  };
 
   return (
-    <div style={{ width: '100%', overflowX: 'auto' }}>
+    <div style={{ width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+        <strong style={{ color: '#202124', fontSize: 15, fontWeight: 800 }}>{metric.label} 추이</strong>
+        <span style={{ color: '#9aa0a6', fontSize: 12 }}>{metric.unit}</span>
+      </div>
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        style={{ width: '100%', minWidth: 520, height: 'auto' }}
+        style={{ width: '100%', minWidth: 0, height: 230, display: 'block' }}
         role="img"
         aria-label="트렌드 분석 그래프"
       >
@@ -49,13 +60,13 @@ export default function TrendChart({ data, metric }) {
 
         {yTicks.map((tick) => (
           <g key={tick.value}>
-            <line x1={pad.left} y1={tick.y} x2={width - pad.right} y2={tick.y} stroke="#f1f3f4" strokeWidth="1" />
-            <text x={pad.left - 8} y={tick.y + 4} textAnchor="end" fill="#9aa0a6" fontSize="11">{tick.value.toFixed(0)}</text>
+            <line x1={pad.left} y1={tick.y} x2={width - pad.right} y2={tick.y} stroke="#f1f5f9" strokeWidth="1" />
+            <text x={pad.left - 8} y={tick.y + 4} textAnchor="end" fill="#94a3b8" fontSize="10">{tick.value.toFixed(0)}</text>
           </g>
         ))}
 
-        <line x1={pad.left} y1={pad.top} x2={pad.left} y2={height - pad.bottom} stroke="#e8eaed" strokeWidth="1" />
-        <line x1={pad.left} y1={height - pad.bottom} x2={width - pad.right} y2={height - pad.bottom} stroke="#e8eaed" strokeWidth="1" />
+        <line x1={pad.left} y1={pad.top} x2={pad.left} y2={height - pad.bottom} stroke="#e2e8f0" strokeWidth="1" />
+        <line x1={pad.left} y1={height - pad.bottom} x2={width - pad.right} y2={height - pad.bottom} stroke="#e2e8f0" strokeWidth="1" />
 
         {/* 채우기 영역 */}
         <path d={fillPath} fill="url(#trendGrad)" />
@@ -78,15 +89,13 @@ export default function TrendChart({ data, metric }) {
           const pos = toPoint(0, index);
           return (
             <text key={point.date} x={pos.x} y={height - 12} textAnchor="middle" fill="#9aa0a6" fontSize="11">
-              {point.date.slice(5)}
+              {formatDate(point.date)}
             </text>
           );
         })}
-
-        <text x={pad.left} y="13" fill="#9aa0a6" fontSize="11">{metric.label} ({metric.unit})</text>
       </svg>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, color: '#70757a', fontSize: 12, marginTop: 10 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, color: '#70757a', fontSize: 12, marginTop: 4 }}>
         <Legend color="#1589F0" label="일자별 평균" />
         <Legend color="#facc15" label="이동 평균" />
         <Legend color="#fb7185" label="추세선" dashed />

@@ -570,40 +570,49 @@ export default function Dashboard() {
         )}
 
         {tab === 'trends' && (
-          <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, padding: '24px 28px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <h2 style={{ color: '#202124', fontSize: 15, fontWeight: 700, margin: '0 0 16px' }}>
-              {selectedRegion} 트렌드 분석
-            </h2>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-              {['7d', '30d'].map((period) => (
-                <button
-                  key={period}
-                  type="button"
-                  onClick={() => setTrendPeriod(period)}
-                  style={chipBtn(trendPeriod === period)}
-                >
-                  {period === '7d' ? '최근 7일' : '최근 30일'}
-                </button>
-              ))}
-              {CHART_METRICS.filter((m) => m.key !== 'co2').map((metric) => (
-                <button
-                  key={metric.key}
-                  type="button"
-                  onClick={() => setTrendMetricKey(metric.key)}
-                  style={chipBtn(trendMetricKey === metric.key, metric.color)}
-                >
-                  {metric.label}
-                </button>
-              ))}
-            </div>
-            {trendLoading ? (
-              <TrendMessage>트렌드 분석 데이터를 불러오는 중입니다...</TrendMessage>
-            ) : trendMessage ? (
-              <TrendMessage>{trendMessage}</TrendMessage>
-            ) : (
-              <TrendChart data={trendData} metric={trendMetric} />
-            )}
-            <ForecastPanel data={forecastData} loading={forecastLoading} message={forecastMessage} metric={trendMetric} />
+          <div style={{ maxWidth: 1120, margin: '0 auto' }}>
+            <section style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '22px 24px', boxShadow: '0 2px 12px rgba(15,23,42,0.06)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap', marginBottom: 18 }}>
+                <div>
+                  <h2 style={{ color: '#202124', fontSize: 20, fontWeight: 900, margin: '0 0 4px' }}>
+                    {selectedRegion} 트렌드 분석
+                  </h2>
+                  <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>
+                    최근 환경 데이터의 일자별 평균, 이동 평균, 추세를 확인합니다.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                  {['7d', '30d'].map((period) => (
+                    <button
+                      key={period}
+                      type="button"
+                      onClick={() => setTrendPeriod(period)}
+                      style={chipBtn(trendPeriod === period)}
+                    >
+                      {period === '7d' ? '최근 7일' : '최근 30일'}
+                    </button>
+                  ))}
+                  {CHART_METRICS.filter((m) => m.key !== 'co2').map((metric) => (
+                    <button
+                      key={metric.key}
+                      type="button"
+                      onClick={() => setTrendMetricKey(metric.key)}
+                      style={chipBtn(trendMetricKey === metric.key, metric.color)}
+                    >
+                      {metric.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {trendLoading ? (
+                <TrendMessage>트렌드 분석 데이터를 불러오는 중입니다...</TrendMessage>
+              ) : trendMessage ? (
+                <TrendMessage>{trendMessage}</TrendMessage>
+              ) : (
+                <TrendChart data={trendData} metric={trendMetric} />
+              )}
+              <ForecastPanel data={forecastData} loading={forecastLoading} message={forecastMessage} metric={trendMetric} />
+            </section>
           </div>
         )}
 
