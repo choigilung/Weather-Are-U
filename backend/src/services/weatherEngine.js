@@ -98,10 +98,18 @@ class WeatherEngine {
     if (!grid) return null;
 
     try {
-      const now = new Date();
-      const baseDate = now.toISOString().slice(0, 10).replace(/-/g, '');
-      const hours = now.getHours();
-      const baseTime = hours < 1 ? '2300' : `${String(hours - 1).padStart(2, '0')}00`;
+      // Render 서버는 UTC 기준 → KST(+9h) 변환 필요
+      const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      const baseDate = kst.toISOString().slice(0, 10).replace(/-/g, '');
+      const hours = kst.getUTCHours();
+      const minutes = kst.getUTCMinutes();
+      // 초단기실황은 매시 30분 이후 발표 → 30분 이전이면 1시간 전 base
+      let baseH = minutes < 30 ? hours - 1 : hours;
+      const actualBaseDate = baseH < 0
+        ? new Date(kst.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10).replace(/-/g, '')
+        : baseDate;
+      baseH = ((baseH % 24) + 24) % 24;
+      const baseTime = `${String(baseH).padStart(2, '0')}00`;
 
       const response = await axios.get('https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst', {
         params: {
@@ -109,7 +117,7 @@ class WeatherEngine {
           pageNo: 1,
           numOfRows: 10,
           dataType: 'JSON',
-          base_date: baseDate,
+          base_date: actualBaseDate,
           base_time: baseTime,
           nx: grid.nx,
           ny: grid.ny,
