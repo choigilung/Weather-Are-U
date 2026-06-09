@@ -59,7 +59,7 @@ export default function WeatherHeroCard({ forecast, liveData, loading }) {
 
   if (loading || !forecast) {
     return (
-      <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, padding: '28px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', minHeight: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: 'linear-gradient(145deg, #f0f9ff 0%, #ffffff 50%)', border: '1px solid #bae6fd', borderRadius: 16, padding: '28px', boxShadow: '0 4px 16px rgba(14,165,233,0.1)', minHeight: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{ color: '#9aa0a6', fontSize: 14 }}>날씨 정보를 불러오는 중...</span>
       </div>
     );
@@ -68,7 +68,7 @@ export default function WeatherHeroCard({ forecast, liveData, loading }) {
   const { current, today, tomorrow, hourly } = forecast;
 
   return (
-    <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+    <div style={{ background: 'linear-gradient(145deg, #f0f9ff 0%, #ffffff 50%)', border: '1px solid #bae6fd', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 16px rgba(14,165,233,0.1)' }}>
       {/* 상단: 오늘 / 내일 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 0 }}>
         {/* 오늘 */}

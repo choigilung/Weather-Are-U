@@ -188,11 +188,12 @@ export default function Dashboard() {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f7f8fa', fontFamily: "'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif", fontSize: 14, color: '#202124' }}>
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f9ff 0%, #f7f8fa 40%)', fontFamily: "'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif", fontSize: 14, color: '#202124' }}>
       {/* Header */}
       <header style={{
-        background: '#ffffff',
-        borderBottom: '1px solid #e8eaed',
+        background: 'rgba(255,255,255,0.92)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid #e0f2fe',
         padding: '0 28px',
         height: 60,
         display: 'flex',
@@ -202,10 +203,19 @@ export default function Dashboard() {
         position: 'sticky',
         top: 0,
         zIndex: 100,
+        boxShadow: '0 2px 12px rgba(14,165,233,0.08)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
           <img src="/favicon.svg" alt="logo" style={{ width: 26, height: 29 }} />
-          <span style={{ color: '#202124', fontWeight: 800, fontSize: 25, letterSpacing: '-0.1px' }}>WA</span>
+          <span style={{
+            fontWeight: 800,
+            fontSize: 25,
+            letterSpacing: '-0.1px',
+            background: 'linear-gradient(135deg, #0ea5e9 0%, #7c3aed 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+          }}>WA</span>
         </div>
 
         <nav style={{ display: 'flex', alignItems: 'stretch', height: 60, flex: 1, justifyContent: 'center' }}>
@@ -271,17 +281,18 @@ export default function Dashboard() {
                       gap: 6,
                       padding: '6px 16px',
                       borderRadius: 20,
-                      border: active ? '1.5px solid #0ea5e9' : '1.5px solid #e8eaed',
-                      background: active ? '#e0f2fe' : '#ffffff',
-                      color: active ? '#0369a1' : '#5f6368',
+                      border: active ? 'none' : '1.5px solid #e8eaed',
+                      background: active ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : '#ffffff',
+                      color: active ? '#ffffff' : '#5f6368',
                       fontSize: 13,
                       fontWeight: active ? 700 : 500,
                       cursor: 'pointer',
                       transition: 'all 120ms',
+                      boxShadow: active ? '0 2px 8px rgba(14,165,233,0.35)' : 'none',
                     }}
                   >
                     {item.pm25 != null && (
-                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: g.color, flexShrink: 0 }} />
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: active ? 'rgba(255,255,255,0.8)' : g.color, flexShrink: 0 }} />
                     )}
                     {item.region}
                   </button>
@@ -301,9 +312,9 @@ export default function Dashboard() {
                 />
 
                 {/* 24시간 추이 차트 */}
-                <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, padding: '20px 24px', marginTop: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, padding: '20px 24px', marginTop: 12, boxShadow: '0 2px 8px rgba(14,165,233,0.06)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
-                    <h3 style={{ color: '#202124', fontSize: 14, fontWeight: 700, margin: 0 }}>{selectedRegion} 지난 24시간 추이</h3>
+                    <h3 style={{ color: '#202124', fontSize: 14, fontWeight: 700, margin: 0, paddingLeft: 10, borderLeft: '3px solid #0ea5e9' }}>{selectedRegion} 지난 24시간 추이</h3>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                       {CHART_METRICS.map((metric) => (
                         <button
@@ -331,8 +342,8 @@ export default function Dashboard() {
                 </div>
 
                 {/* 생활 지수 */}
-                <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, padding: '20px 24px', marginTop: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                  <h3 style={{ color: '#202124', fontSize: 14, fontWeight: 700, margin: '0 0 16px' }}>오늘의 생활 지수</h3>
+                <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, padding: '20px 24px', marginTop: 12, boxShadow: '0 2px 8px rgba(14,165,233,0.06)' }}>
+                  <h3 style={{ color: '#202124', fontSize: 14, fontWeight: 700, margin: '0 0 16px', paddingLeft: 10, borderLeft: '3px solid #f97316' }}>오늘의 생활 지수</h3>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
                     {lifestyleCards.map((card) => (
                       <div key={card.title} style={{
@@ -341,7 +352,8 @@ export default function Dashboard() {
                         alignItems: 'center',
                         padding: '16px 8px 12px',
                         borderRadius: 12,
-                        background: '#f8f9fa',
+                        background: `linear-gradient(145deg, ${card.color}10 0%, #f8f9fa 100%)`,
+                        border: `1px solid ${card.color}20`,
                         gap: 8,
                       }}>
                         <EmojiGauge color={card.color} grade={card.grade} score={card.score} size={68} />
@@ -370,8 +382,8 @@ export default function Dashboard() {
                 </div>
 
                 {/* 측정 이력 테이블 */}
-                <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, padding: '20px 24px', marginTop: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                  <h3 style={{ color: '#202124', fontSize: 14, fontWeight: 700, margin: '0 0 14px' }}>{selectedRegion} 최근 측정 이력</h3>
+                <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, padding: '20px 24px', marginTop: 12, boxShadow: '0 2px 8px rgba(14,165,233,0.06)' }}>
+                  <h3 style={{ color: '#202124', fontSize: 14, fontWeight: 700, margin: '0 0 14px', paddingLeft: 10, borderLeft: '3px solid #22c55e' }}>{selectedRegion} 최근 측정 이력</h3>
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                       <thead>
@@ -425,9 +437,9 @@ export default function Dashboard() {
               {/* 오른쪽 사이드바 */}
               <aside style={{ position: 'sticky', top: 76, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {/* 전국 현황 */}
-                <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                  <div style={{ padding: '16px 16px 8px' }}>
-                    <h3 style={{ color: '#202124', fontSize: 14, fontWeight: 700, margin: 0 }}>전국 현황</h3>
+                <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 8px rgba(14,165,233,0.06)' }}>
+                  <div style={{ padding: '14px 16px 10px', background: 'linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%)', borderBottom: '1px solid #e0f2fe' }}>
+                    <h3 style={{ color: '#0369a1', fontSize: 14, fontWeight: 700, margin: 0 }}>🗺 전국 현황</h3>
                   </div>
                   {loading ? (
                     <p style={{ color: '#9aa0a6', fontSize: 13, padding: '20px 16px', textAlign: 'center', margin: 0 }}>불러오는 중...</p>
@@ -477,8 +489,8 @@ export default function Dashboard() {
                 </div>
 
                 {/* 알림 설정 카드 */}
-                <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                  <h3 style={{ color: '#202124', fontSize: 14, fontWeight: 700, margin: '0 0 8px' }}>알림 설정</h3>
+                <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, padding: '18px 20px', boxShadow: '0 2px 8px rgba(14,165,233,0.06)' }}>
+                  <h3 style={{ color: '#202124', fontSize: 14, fontWeight: 700, margin: '0 0 8px', paddingLeft: 10, borderLeft: '3px solid #0ea5e9' }}>알림 설정</h3>
                   <p style={{ color: '#70757a', fontSize: 13, lineHeight: 1.6, margin: '0 0 12px' }}>
                     PM2.5, PM10, 온도, 습도 기준 알림을 설정할 수 있습니다.
                   </p>
@@ -537,8 +549,8 @@ export default function Dashboard() {
                   )}
                 </div>
                 {/* CSV 내보내기 카드 */}
-                <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                  <h3 style={{ color: '#202124', fontSize: 14, fontWeight: 700, margin: '0 0 8px' }}>CSV 내보내기</h3>
+                <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, padding: '18px 20px', boxShadow: '0 2px 8px rgba(14,165,233,0.06)' }}>
+                  <h3 style={{ color: '#202124', fontSize: 14, fontWeight: 700, margin: '0 0 8px', paddingLeft: 10, borderLeft: '3px solid #22c55e' }}>CSV 내보내기</h3>
                   <p style={{ color: '#70757a', fontSize: 13, lineHeight: 1.6, margin: '0 0 12px' }}>
                     측정 데이터를 날짜·지역·항목별로 CSV로 다운로드할 수 있습니다.
                   </p>
@@ -571,10 +583,10 @@ export default function Dashboard() {
 
         {tab === 'trends' && (
           <div style={{ maxWidth: 1120, margin: '0 auto' }}>
-            <section style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '22px 24px', boxShadow: '0 2px 12px rgba(15,23,42,0.06)' }}>
+            <section style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '22px 24px', boxShadow: '0 4px 16px rgba(14,165,233,0.08)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap', marginBottom: 18 }}>
                 <div>
-                  <h2 style={{ color: '#202124', fontSize: 20, fontWeight: 900, margin: '0 0 4px' }}>
+                  <h2 style={{ color: '#202124', fontSize: 20, fontWeight: 900, margin: '0 0 4px', paddingLeft: 12, borderLeft: '4px solid #0ea5e9' }}>
                     {selectedRegion} 트렌드 분석
                   </h2>
                   <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>
