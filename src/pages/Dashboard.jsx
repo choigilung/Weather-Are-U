@@ -583,6 +583,41 @@ export default function Dashboard() {
 
         {tab === 'trends' && (
           <div style={{ maxWidth: 1120, margin: '0 auto' }}>
+            {/* 지역 선택 칩 */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+              {regionList.map((item) => {
+                const g = getPm25Grade(item.pm25);
+                const active = selectedRegion === item.region;
+                return (
+                  <button
+                    key={item.region}
+                    onClick={() => setSelectedRegion(item.region)}
+                    type="button"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '6px 16px',
+                      borderRadius: 20,
+                      border: active ? 'none' : '1.5px solid #e8eaed',
+                      background: active ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : '#ffffff',
+                      color: active ? '#ffffff' : '#5f6368',
+                      fontSize: 13,
+                      fontWeight: active ? 700 : 500,
+                      cursor: 'pointer',
+                      transition: 'all 120ms',
+                      boxShadow: active ? '0 2px 8px rgba(14,165,233,0.35)' : 'none',
+                    }}
+                  >
+                    {item.pm25 != null && (
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: active ? 'rgba(255,255,255,0.8)' : g.color, flexShrink: 0 }} />
+                    )}
+                    {item.region}
+                  </button>
+                );
+              })}
+            </div>
+
             <section style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '22px 24px', boxShadow: '0 4px 16px rgba(14,165,233,0.08)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap', marginBottom: 18 }}>
                 <div>
