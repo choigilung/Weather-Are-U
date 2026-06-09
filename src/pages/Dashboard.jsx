@@ -215,7 +215,7 @@ export default function Dashboard() {
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
-          }}>WA</span>
+          }}>WAU</span>
         </div>
 
         <nav style={{ display: 'flex', alignItems: 'stretch', height: 60, flex: 1, justifyContent: 'center' }}>
