@@ -237,7 +237,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main style={{ padding: '20px 28px' }}>
+      <main ref={reportRef} style={{ padding: '20px 28px' }}>
         {error && (
           <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, color: '#dc2626', padding: '10px 16px', marginBottom: 14, fontSize: 13 }}>
             {error}
@@ -245,7 +245,7 @@ export default function Dashboard() {
         )}
 
         {tab === 'dashboard' && (
-          <div ref={reportRef}>
+          <div>
             {isGeneratingPdf && (
               <div style={{ background: '#fff', border: '1px solid #e8eaed', borderRadius: 12, padding: '16px 20px', marginBottom: 14 }}>
                 <h2 style={{ color: '#202124', fontSize: 17, margin: '0 0 4px' }}>환경 모니터링 대시보드 보고서</h2>
