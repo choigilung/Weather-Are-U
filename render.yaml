@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: weather-are-u-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node app.js
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: AIRKOREA_API_KEY
+        sync: false
+      - key: WEATHER_API_KEY
+        sync: false
+      - key: SUNRISE_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
