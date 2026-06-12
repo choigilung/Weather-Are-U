@@ -111,6 +111,7 @@ export default function NaverMapPanel({ liveData, selectedRegion, onSelectRegion
   const [searchResult, setSearchResult] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
+  const [searchAddress, setSearchAddress] = useState('');
   const [searchMetricKey, setSearchMetricKey] = useState('pm25');
   const [regionQuery, setRegionQuery] = useState('');
   const [regionNotFound, setRegionNotFound] = useState(false);
@@ -142,7 +143,23 @@ export default function NaverMapPanel({ liveData, selectedRegion, onSelectRegion
     setSearchPoint({ lat, lng });
     setSearchResult(null);
     setSearchError('');
+    setSearchAddress('');
     setSearchLoading(true);
+
+    const maps = window.naver?.maps;
+    if (maps?.Service) {
+      maps.Service.reverseGeocode({
+        coords: new maps.LatLng(lat, lng),
+        orders: [maps.Service.OrderType.ADDR, maps.Service.OrderType.ROAD_ADDR].join(','),
+      }, (status, response) => {
+        if (status !== maps.Service.Status.OK) return;
+        const region = response?.v2?.results?.[0]?.region;
+        if (!region) return;
+        const parts = [region.area1?.name, region.area2?.name, region.area3?.name].filter(Boolean);
+        if (parts.length) setSearchAddress(parts.join(' '));
+      });
+    }
+
     try {
       const result = await searchLocation(lat, lng);
       setSearchResult(result);
@@ -157,6 +174,7 @@ export default function NaverMapPanel({ liveData, selectedRegion, onSelectRegion
     setSearchPoint(null);
     setSearchResult(null);
     setSearchError('');
+    setSearchAddress('');
   }, []);
 
   const handleRegionSearch = useCallback((e) => {
@@ -392,8 +410,8 @@ export default function NaverMapPanel({ liveData, selectedRegion, onSelectRegion
       map: mapRef.current,
       zIndex: 25,
       icon: {
-        content: '<div style="width:14px;height:14px;border-radius:50%;background:#ef4444;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);transform:translate(-50%,-50%);"></div>',
-        anchor: new maps.Point(7, 7),
+        content: '<div style="font-size:28px;line-height:1;transform:translate(-50%,-100%);filter:drop-shadow(0 2px 4px rgba(0,0,0,0.35));">📍</div>',
+        anchor: new maps.Point(14, 28),
       },
     });
   }, [searchPoint, status]);
@@ -431,7 +449,7 @@ export default function NaverMapPanel({ liveData, selectedRegion, onSelectRegion
           type="text"
           value={regionQuery}
           onChange={(e) => { setRegionQuery(e.target.value); setRegionNotFound(false); }}
-          placeholder="지역/주소 검색 (예: 수원시)"
+          placeholder="지역/주소 검색 (예: 서울)"
           style={{
             border: '1px solid #d7dde5', borderRadius: 20, padding: '8px 14px', fontSize: 13,
             fontFamily: 'system-ui', width: 160, background: 'rgba(255,255,255,0.96)',
@@ -465,6 +483,7 @@ export default function NaverMapPanel({ liveData, selectedRegion, onSelectRegion
       {searchPoint ? (
         <SearchResultPanel
           point={searchPoint}
+          address={searchAddress}
           result={searchResult}
           loading={searchLoading}
           error={searchError}
@@ -660,7 +679,7 @@ function WeatherTimeline({ activeRegion, forecast, forecastLoading, hourly, curr
   );
 }
 
-function SearchResultPanel({ point, result, loading, error, metricKey, onMetricChange, onClose }) {
+function SearchResultPanel({ point, address, result, loading, error, metricKey, onMetricChange, onClose }) {
   const metric = SEARCH_METRICS.find((m) => m.key === metricKey) || SEARCH_METRICS[0];
   const chartData = useMemo(() => {
     if (!result?.history) return [];
@@ -683,8 +702,8 @@ function SearchResultPanel({ point, result, loading, error, metricKey, onMetricC
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8, gap: 8 }}>
         <div>
-          <p style={{ margin: 0, fontSize: 11, color: '#9aa0a6', fontWeight: 700, fontFamily: 'system-ui' }}>
-            선택한 위치 ({point.lat.toFixed(3)}, {point.lng.toFixed(3)})
+          <p style={{ margin: 0, fontSize: 14, color: '#202124', fontWeight: 800, fontFamily: 'system-ui' }}>
+            {address || `선택한 위치 (${point.lat.toFixed(3)}, ${point.lng.toFixed(3)})`}
           </p>
           {result?.nearestRegion && (
             <p style={{ margin: '2px 0 0', fontSize: 12, color: '#5f6368', fontFamily: 'system-ui' }}>
