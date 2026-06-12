@@ -37,6 +37,12 @@ class WeatherEngine {
       인천: '인천',
       대구: '대구',
       창원: '경남',
+      광주: '광주',
+      대전: '대전',
+      강릉: '강원',
+      전주: '전북',
+      울산: '울산',
+      제주: '제주',
     };
 
     const apiKey = process.env.AIRKOREA_API_KEY;
@@ -92,6 +98,12 @@ class WeatherEngine {
       인천: { nx: 55, ny: 124 },
       대구: { nx: 89, ny: 90 },
       창원: { nx: 89, ny: 76 },
+      광주: { nx: 58, ny: 74 },
+      대전: { nx: 67, ny: 100 },
+      강릉: { nx: 92, ny: 131 },
+      전주: { nx: 63, ny: 89 },
+      울산: { nx: 102, ny: 84 },
+      제주: { nx: 52, ny: 38 },
     };
 
     const grid = regionGrid[region];
