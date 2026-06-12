@@ -7,6 +7,7 @@ const trendAnalyzer = require('./src/services/trendAnalyzer');
 const forecastService = require('./src/services/forecastService');
 const regionService = require('./src/services/regionService');
 const externalStatusService = require('./src/services/externalStatusService');
+const { latLonToGrid } = require('./src/utils/gridConverter');
 require('dotenv').config();
 
 const app = express();
@@ -22,6 +23,36 @@ app.use(express.json());
 app.get('/api/regions', (req, res) => {
   const regions = regionService.getRegions();
   res.status(200).json({ success: true, count: regions.length, data: regions });
+});
+
+app.get('/api/search/location', async (req, res) => {
+  try {
+    const lat = parseFloat(req.query.lat);
+    const lon = parseFloat(req.query.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      return res.status(400).json({ error: 'lat, lon 파라미터가 필요합니다.' });
+    }
+
+    const grid = latLonToGrid(lat, lon);
+    const { region: nearest, distanceKm } = regionService.findNearestRegion(lat, lon);
+
+    const [current, history] = await Promise.all([
+      weatherEngine.getNowcastByGrid(grid.nx, grid.ny),
+      weatherRepository.getHistoryByRegion(nearest.name, { hours: 24, limit: 300 }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      query: { lat, lon },
+      grid,
+      current,
+      nearestRegion: { name: nearest.name, code: nearest.code, distanceKm: Math.round(distanceKm * 10) / 10 },
+      history,
+    });
+  } catch (error) {
+    console.error('[search/location]', error.message);
+    res.status(500).json({ error: '위치 검색 중 오류가 발생했습니다.' });
+  }
 });
 
 app.get('/api/external/status', async (req, res) => {

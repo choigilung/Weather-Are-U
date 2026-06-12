@@ -114,6 +114,20 @@ function getRegionCoords(name) {
   return { lat: region.latitude, lon: region.longitude };
 }
 
+function findNearestRegion(lat, lon) {
+  const { haversineKm } = require('../utils/gridConverter');
+  let nearest = null;
+  let nearestDist = Infinity;
+  for (const region of REGIONS) {
+    const dist = haversineKm(lat, lon, region.latitude, region.longitude);
+    if (dist < nearestDist) {
+      nearestDist = dist;
+      nearest = region;
+    }
+  }
+  return { region: nearest, distanceKm: nearestDist };
+}
+
 module.exports = {
   REGIONS,
   REGION_NAMES: REGIONS.map((region) => region.name),
@@ -121,4 +135,5 @@ module.exports = {
   getRegionByName,
   getRegionGrid,
   getRegionCoords,
+  findNearestRegion,
 };

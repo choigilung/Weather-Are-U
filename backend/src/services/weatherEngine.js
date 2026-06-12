@@ -89,9 +89,6 @@ class WeatherEngine {
   }
 
   async fetchWeatherData(region) {
-    const apiKey = process.env.WEATHER_API_KEY;
-    if (!apiKey) return null;
-
     const regionGrid = {
       서울: { nx: 60, ny: 127 },
       부산: { nx: 98, ny: 76 },
@@ -108,6 +105,13 @@ class WeatherEngine {
 
     const grid = regionGrid[region];
     if (!grid) return null;
+
+    return this.getNowcastByGrid(grid.nx, grid.ny);
+  }
+
+  async getNowcastByGrid(nx, ny) {
+    const apiKey = process.env.WEATHER_API_KEY;
+    if (!apiKey) return null;
 
     try {
       // Render 서버는 UTC 기준 → KST(+9h) 변환 필요
@@ -131,8 +135,8 @@ class WeatherEngine {
           dataType: 'JSON',
           base_date: actualBaseDate,
           base_time: baseTime,
-          nx: grid.nx,
-          ny: grid.ny,
+          nx,
+          ny,
         },
         timeout: 10000,
       });

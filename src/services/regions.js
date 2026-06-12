@@ -31,3 +31,8 @@ export async function fetchRegions() {
     return DEFAULT_REGION_META;
   }
 }
+
+export async function searchLocation(lat, lon) {
+  const result = await api.get(`/api/search/location?lat=${lat}&lon=${lon}`);
+  return result;
+}

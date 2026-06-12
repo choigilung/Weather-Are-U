@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../services/api';
-import { DEFAULT_REGION_META, fetchRegions, regionsToCoords } from '../services/regions';
+import { DEFAULT_REGION_META, fetchRegions, regionsToCoords, searchLocation } from '../services/regions';
+import Pm25LineChart from './Pm25LineChart';
 
 const NAVER_MAPS_KEY_ID = import.meta.env.VITE_NAVER_MAPS_KEY_ID;
 
 const SKY_DAY = { 1: '☀️', 3: '⛅', 4: '☁️' };
 const SKY_NIGHT = { 1: '🌙', 3: '🌛', 4: '☁️' };
 const PTY_EMOJI = { 1: '🌧️', 2: '🌨️', 3: '❄️', 5: '🌦️', 6: '🌨️', 7: '🌨️' };
+
+const SEARCH_METRICS = [
+  { key: 'pm25', label: 'PM2.5', unit: 'µg/m³', color: '#1589F0', step: 10 },
+  { key: 'pm10', label: 'PM10', unit: 'µg/m³', color: '#1589F0', step: 10 },
+  { key: 'co2', label: 'CO2', unit: 'ppm', color: '#22c55e', step: 100 },
+];
 
 let naverMapsPromise = null;
 
@@ -17,7 +24,7 @@ function loadNaverMaps() {
 
   naverMapsPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(NAVER_MAPS_KEY_ID)}`;
+    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(NAVER_MAPS_KEY_ID)}&submodules=geocoder`;
     script.async = true;
     script.defer = true;
     script.onload = () => {
@@ -91,6 +98,7 @@ export default function NaverMapPanel({ liveData, selectedRegion, onSelectRegion
   const tempCirclesRef = useRef([]);
   const windMarkersRef = useRef([]);
   const pm25CirclesRef = useRef([]);
+  const searchMarkerRef = useRef(null);
 
   const [status, setStatus] = useState('loading');
   const [mapError, setMapError] = useState('');
@@ -99,6 +107,13 @@ export default function NaverMapPanel({ liveData, selectedRegion, onSelectRegion
   const [forecastLoading, setForecastLoading] = useState(false);
   const [regions, setRegions] = useState(initialRegions?.length ? initialRegions : DEFAULT_REGION_META);
   const [layers, setLayers] = useState({ temp: false, wind: true, air: false });
+  const [searchPoint, setSearchPoint] = useState(null);
+  const [searchResult, setSearchResult] = useState(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [searchMetricKey, setSearchMetricKey] = useState('pm25');
+  const [regionQuery, setRegionQuery] = useState('');
+  const [regionNotFound, setRegionNotFound] = useState(false);
 
   const regionCoords = useMemo(() => regionsToCoords(regions), [regions]);
   const regionNames = useMemo(() => regions.map((region) => region.name), [regions]);
@@ -121,6 +136,73 @@ export default function NaverMapPanel({ liveData, selectedRegion, onSelectRegion
     loadForecast(region);
   }, [loadForecast, onSelectRegion]);
 
+  const handleMapClick = useCallback(async (e) => {
+    const lat = e.coord.lat();
+    const lng = e.coord.lng();
+    setSearchPoint({ lat, lng });
+    setSearchResult(null);
+    setSearchError('');
+    setSearchLoading(true);
+    try {
+      const result = await searchLocation(lat, lng);
+      setSearchResult(result);
+    } catch (err) {
+      setSearchError(err.message || '검색에 실패했습니다.');
+    } finally {
+      setSearchLoading(false);
+    }
+  }, []);
+
+  const handleCloseSearch = useCallback(() => {
+    setSearchPoint(null);
+    setSearchResult(null);
+    setSearchError('');
+  }, []);
+
+  const handleRegionSearch = useCallback((e) => {
+    e.preventDefault();
+    const query = regionQuery.trim();
+    if (!query) return;
+
+    const maps = window.naver?.maps;
+    const match = regions.find((region) => region.name.includes(query) || query.includes(region.name));
+
+    if (match) {
+      setRegionNotFound(false);
+      handleCloseSearch();
+      handleRegionClick(match.name);
+      if (mapRef.current && maps) {
+        mapRef.current.setCenter(new maps.LatLng(match.latitude, match.longitude));
+        mapRef.current.setZoom(10);
+      }
+      return;
+    }
+
+    if (!maps?.Service) {
+      setRegionNotFound(true);
+      return;
+    }
+
+    maps.Service.geocode({ query }, (status, response) => {
+      const addresses = response?.v2?.addresses;
+      if (status !== maps.Service.Status.OK || !addresses?.length) {
+        setRegionNotFound(true);
+        return;
+      }
+
+      setRegionNotFound(false);
+      const lat = parseFloat(addresses[0].y);
+      const lng = parseFloat(addresses[0].x);
+
+      handleMapClick({ coord: { lat: () => lat, lng: () => lng } });
+
+      if (mapRef.current) {
+        mapRef.current.setCenter(new maps.LatLng(lat, lng));
+        mapRef.current.setZoom(12);
+      }
+    });
+  }, [regionQuery, regions, handleRegionClick, handleCloseSearch, handleMapClick]);
+
   useEffect(() => {
     if (initialRegions?.length) setRegions(initialRegions);
   }, [initialRegions]);
@@ -137,6 +219,7 @@ export default function NaverMapPanel({ liveData, selectedRegion, onSelectRegion
 
   useEffect(() => {
     let cancelled = false;
+    let resizeHandler = null;
 
     async function init() {
       try {
@@ -155,6 +238,15 @@ export default function NaverMapPanel({ liveData, selectedRegion, onSelectRegion
           zoomControlOptions: { position: maps.Position.LEFT_BOTTOM },
         });
 
+        maps.Event.addListener(mapRef.current, 'click', (e) => {
+          if (e.overlay) return;
+          handleMapClick(e);
+        });
+
+        resizeHandler = () => maps.Event.trigger(mapRef.current, 'resize');
+        window.addEventListener('resize', resizeHandler);
+        setTimeout(resizeHandler, 200);
+
         setStatus('ready');
       } catch (error) {
         if (!cancelled) {
@@ -166,7 +258,10 @@ export default function NaverMapPanel({ liveData, selectedRegion, onSelectRegion
 
     init();
     loadForecast(selectedRegion || '서울');
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (resizeHandler) window.removeEventListener('resize', resizeHandler);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -283,6 +378,26 @@ export default function NaverMapPanel({ liveData, selectedRegion, onSelectRegion
     });
   }, [layers.air, liveData, regionCoords, regionNames, status]);
 
+  useEffect(() => {
+    if (status !== 'ready' || !mapRef.current || !window.naver?.maps) return;
+    if (searchMarkerRef.current) {
+      searchMarkerRef.current.setMap(null);
+      searchMarkerRef.current = null;
+    }
+    if (!searchPoint) return;
+
+    const maps = window.naver.maps;
+    searchMarkerRef.current = new maps.Marker({
+      position: new maps.LatLng(searchPoint.lat, searchPoint.lng),
+      map: mapRef.current,
+      zIndex: 25,
+      icon: {
+        content: '<div style="width:14px;height:14px;border-radius:50%;background:#ef4444;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);transform:translate(-50%,-50%);"></div>',
+        anchor: new maps.Point(7, 7),
+      },
+    });
+  }, [searchPoint, status]);
+
   if (!NAVER_MAPS_KEY_ID) {
     return (
       <div style={{ padding: 40, textAlign: 'center', color: '#70757a', background: '#f7f8fa', borderRadius: 12 }}>
@@ -308,6 +423,35 @@ export default function NaverMapPanel({ liveData, selectedRegion, onSelectRegion
         </div>
       )}
 
+      <form onSubmit={handleRegionSearch} style={{
+        position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 21,
+        display: 'flex', alignItems: 'center', gap: 6,
+      }}>
+        <input
+          type="text"
+          value={regionQuery}
+          onChange={(e) => { setRegionQuery(e.target.value); setRegionNotFound(false); }}
+          placeholder="지역/주소 검색 (예: 수원시)"
+          style={{
+            border: '1px solid #d7dde5', borderRadius: 20, padding: '8px 14px', fontSize: 13,
+            fontFamily: 'system-ui', width: 160, background: 'rgba(255,255,255,0.96)',
+            boxShadow: '0 2px 8px rgba(15,23,42,0.12)', outline: 'none',
+          }}
+        />
+        <button type="submit" style={{
+          border: 'none', borderRadius: 20, padding: '9px 16px', fontSize: 13, fontWeight: 800,
+          fontFamily: 'system-ui', background: '#0ea5e9', color: '#fff', cursor: 'pointer',
+          boxShadow: '0 2px 8px rgba(15,23,42,0.16)',
+        }}>
+          검색
+        </button>
+        {regionNotFound && (
+          <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 700, fontFamily: 'system-ui', whiteSpace: 'nowrap' }}>
+            지역을 찾을 수 없어요
+          </span>
+        )}
+      </form>
+
       {forecast && (
         <WeatherPopup activeRegion={activeRegion} forecast={forecast} layers={layers} />
       )}
@@ -317,6 +461,26 @@ export default function NaverMapPanel({ liveData, selectedRegion, onSelectRegion
         allForecastsLoading={false}
         onToggleLayer={(key) => setLayers((prev) => ({ ...prev, [key]: !prev[key] }))}
       />
+
+      {searchPoint ? (
+        <SearchResultPanel
+          point={searchPoint}
+          result={searchResult}
+          loading={searchLoading}
+          error={searchError}
+          metricKey={searchMetricKey}
+          onMetricChange={setSearchMetricKey}
+          onClose={handleCloseSearch}
+        />
+      ) : (
+        <div style={{
+          position: 'absolute', top: 162, right: 18, zIndex: 18,
+          background: 'rgba(15,23,42,0.7)', color: '#fff', fontSize: 11, fontWeight: 700,
+          padding: '6px 10px', borderRadius: 8, fontFamily: 'system-ui', maxWidth: 130, textAlign: 'center',
+        }}>
+          지도를 클릭하면 해당 위치 정보를 볼 수 있어요
+        </div>
+      )}
 
       <WeatherTimeline
         activeRegion={activeRegion}
@@ -491,6 +655,89 @@ function WeatherTimeline({ activeRegion, forecast, forecastLoading, hourly, curr
         </div>
       ) : (
         <p style={{ color: '#9aa0a6', fontSize: 12, margin: 0 }}>예보 정보 없음</p>
+      )}
+    </div>
+  );
+}
+
+function SearchResultPanel({ point, result, loading, error, metricKey, onMetricChange, onClose }) {
+  const metric = SEARCH_METRICS.find((m) => m.key === metricKey) || SEARCH_METRICS[0];
+  const chartData = useMemo(() => {
+    if (!result?.history) return [];
+    return [...result.history].sort((a, b) => new Date(a.measured_at) - new Date(b.measured_at));
+  }, [result]);
+
+  return (
+    <div style={{
+      position: 'absolute',
+      top: 162,
+      right: 18,
+      zIndex: 19,
+      width: 340,
+      background: 'rgba(255,255,255,0.97)',
+      backdropFilter: 'blur(12px)',
+      border: '1px solid rgba(226,232,240,0.95)',
+      borderRadius: 14,
+      boxShadow: '0 10px 30px rgba(15,23,42,0.18)',
+      padding: '14px 16px',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8, gap: 8 }}>
+        <div>
+          <p style={{ margin: 0, fontSize: 11, color: '#9aa0a6', fontWeight: 700, fontFamily: 'system-ui' }}>
+            선택한 위치 ({point.lat.toFixed(3)}, {point.lng.toFixed(3)})
+          </p>
+          {result?.nearestRegion && (
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#5f6368', fontFamily: 'system-ui' }}>
+              대기질은 인근 {result.nearestRegion.name} 측정소 기준 (약 {result.nearestRegion.distanceKm}km)
+            </p>
+          )}
+        </div>
+        <button type="button" onClick={onClose} style={{ border: 'none', background: 'transparent', fontSize: 16, cursor: 'pointer', color: '#9aa0a6', lineHeight: 1, padding: 0 }}>
+          ✕
+        </button>
+      </div>
+
+      {loading && <p style={{ color: '#9aa0a6', fontSize: 12, fontFamily: 'system-ui' }}>불러오는 중...</p>}
+      {error && <p style={{ color: '#ef4444', fontSize: 12, fontFamily: 'system-ui' }}>{error}</p>}
+
+      {result && !loading && (
+        <>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <div style={{ background: '#f1f5f9', borderRadius: 8, padding: '6px 10px', flex: 1, textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: 10, color: '#9aa0a6', fontWeight: 700, fontFamily: 'system-ui' }}>현재 온도</p>
+              <p style={{ margin: 0, fontSize: 18, fontWeight: 900, fontFamily: "'Roboto Mono', monospace" }}>{fmtValue(result.current?.temperature, '°')}</p>
+            </div>
+            <div style={{ background: '#f1f5f9', borderRadius: 8, padding: '6px 10px', flex: 1, textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: 10, color: '#9aa0a6', fontWeight: 700, fontFamily: 'system-ui' }}>현재 습도</p>
+              <p style={{ margin: 0, fontSize: 18, fontWeight: 900, fontFamily: "'Roboto Mono', monospace" }}>{fmtValue(result.current?.humidity, '%')}</p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+            {SEARCH_METRICS.map((m) => (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => onMetricChange(m.key)}
+                style={{
+                  border: `1px solid ${metricKey === m.key ? m.color : '#e8eaed'}`,
+                  background: metricKey === m.key ? `${m.color}15` : '#f8f9fa',
+                  color: metricKey === m.key ? m.color : '#70757a',
+                  borderRadius: 20,
+                  padding: '4px 12px',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: 'system-ui',
+                }}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          <Pm25LineChart data={chartData} loading={false} error="" metric={metric} />
+        </>
       )}
     </div>
   );
