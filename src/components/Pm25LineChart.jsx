@@ -33,7 +33,29 @@ export default function Pm25LineChart({ data, loading, error, metric }) {
     value: min + (max - min) * ratio,
     y: pad.top + (1 - ratio) * innerH,
   }));
-  const xTicks = points.filter((_, i) => i === 0 || i === points.length - 1 || i % Math.ceil(points.length / 4) === 0);
+  const TICK_COUNT = 4;
+  const firstTime = new Date(points[0].item.measured_at).getTime();
+  const lastTime = new Date(points[points.length - 1].item.measured_at).getTime();
+  const span = lastTime - firstTime;
+
+  const tickCount = Math.min(TICK_COUNT, points.length);
+  const xTicks = [];
+  for (let i = 0; i < tickCount; i++) {
+    const ratio = tickCount > 1 ? i / (tickCount - 1) : 0;
+    const target = firstTime + ratio * span;
+    let closest = points[0];
+    let closestDiff = Infinity;
+    for (const p of points) {
+      const diff = Math.abs(new Date(p.item.measured_at).getTime() - target);
+      if (diff < closestDiff) {
+        closest = p;
+        closestDiff = diff;
+      }
+    }
+    if (!xTicks.length || xTicks[xTicks.length - 1] !== closest) {
+      xTicks.push(closest);
+    }
+  }
 
   return (
     <div style={{ width: '100%', overflowX: 'auto' }}>

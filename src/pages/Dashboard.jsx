@@ -62,7 +62,7 @@ export default function Dashboard() {
     setHistoryLoading(true);
     setHistoryError('');
     try {
-      const data = await api.get(`/api/environment/history/${encodeURIComponent(region)}?limit=15`);
+      const data = await api.get(`/api/environment/history/${encodeURIComponent(region)}?hours=24&limit=300`);
       setHistory(data.data || []);
     } catch (err) {
       setHistoryError(err.message);
