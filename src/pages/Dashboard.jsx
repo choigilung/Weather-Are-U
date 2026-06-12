@@ -439,7 +439,7 @@ export default function Dashboard() {
                 {/* 전국 현황 */}
                 <div style={{ background: '#ffffff', border: '1px solid #e8eaed', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 8px rgba(14,165,233,0.06)' }}>
                   <div style={{ padding: '14px 16px 10px', background: 'linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%)', borderBottom: '1px solid #e0f2fe' }}>
-                    <h3 style={{ color: '#0369a1', fontSize: 14, fontWeight: 700, margin: 0 }}>🗺 전국 현황</h3>
+                    <h3 style={{ color: '#0369a1', fontSize: 14, fontWeight: 700, margin: 0 }}>🗺 전국 미세먼지 현황</h3>
                   </div>
                   {loading ? (
                     <p style={{ color: '#9aa0a6', fontSize: 13, padding: '20px 16px', textAlign: 'center', margin: 0 }}>불러오는 중...</p>
