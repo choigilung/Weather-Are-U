@@ -33,15 +33,25 @@ export default function Pm25LineChart({ data, loading, error, metric }) {
     value: min + (max - min) * ratio,
     y: pad.top + (1 - ratio) * innerH,
   }));
-  const TICK_COUNT = 4;
   const firstTime = new Date(points[0].item.measured_at).getTime();
   const lastTime = new Date(points[points.length - 1].item.measured_at).getTime();
-  const span = lastTime - firstTime;
 
-  // 차트 x좌표가 인덱스 기반이므로 tick도 인덱스 기반으로 선택해야 시각적 겹침이 없음
-  const n = points.length - 1;
-  const tickIndices = [...new Set([0, Math.round(n / 3), Math.round((2 * n) / 3), n])];
-  const xTicks = tickIndices.map((idx) => points[idx]);
+  // 2시간 경계(00:00, 02:00, 04:00 …)마다 tick 생성, 픽셀 간격이 좁으면 자동 스킵
+  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+  const MIN_LABEL_GAP = 54;
+  const startBoundary = Math.ceil(firstTime / TWO_HOURS_MS) * TWO_HOURS_MS;
+  const xTicks = [];
+  for (let target = startBoundary; target <= lastTime + TWO_HOURS_MS / 2; target += TWO_HOURS_MS) {
+    let closest = points[0];
+    let closestDiff = Infinity;
+    for (const p of points) {
+      const diff = Math.abs(new Date(p.item.measured_at).getTime() - target);
+      if (diff < closestDiff) { closest = p; closestDiff = diff; }
+    }
+    if (!xTicks.length || (xTicks[xTicks.length - 1] !== closest && closest.x - xTicks[xTicks.length - 1].x >= MIN_LABEL_GAP)) {
+      xTicks.push(closest);
+    }
+  }
 
   return (
     <div style={{ width: '100%', overflowX: 'auto' }}>
