@@ -34,16 +34,40 @@ export default function Pm25LineChart({ data, loading, error, metric }) {
     y: pad.top + (1 - ratio) * innerH,
   }));
   const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+  const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+  const firstTime = new Date(points[0].item.measured_at).getTime();
+  const lastTime = new Date(points[points.length - 1].item.measured_at).getTime();
 
-  // 정확히 4개: 인덱스 0, 1/3, 2/3, 끝 → 픽셀 겹침 원천 차단
-  // 레이블은 각 포인트 시각을 가장 가까운 2시간 경계로 반올림
-  const n = points.length - 1;
-  const xTicks = [...new Set([0, Math.round(n / 3), Math.round((2 * n) / 3), n])].map((idx) => {
-    const p = points[idx];
-    const t = new Date(p.item.measured_at).getTime();
-    const labelTime = Math.round(t / TWO_HOURS_MS) * TWO_HOURS_MS;
-    return { point: p, labelTime };
-  });
+  // KST 기준 2시간 경계(00:00, 02:00, 04:00…) 목록 수집
+  const firstBoundaryKST = Math.ceil((firstTime + KST_OFFSET_MS) / TWO_HOURS_MS) * TWO_HOURS_MS;
+  const allBoundaries = [];
+  for (let kst = firstBoundaryKST; kst <= lastTime + KST_OFFSET_MS; kst += TWO_HOURS_MS) {
+    allBoundaries.push(kst - KST_OFFSET_MS);
+  }
+
+  // 4개 균등 선택
+  const WANT = 4;
+  const selected = allBoundaries.length <= WANT
+    ? allBoundaries
+    : Array.from({ length: WANT }, (_, i) =>
+        allBoundaries[Math.round((i * (allBoundaries.length - 1)) / (WANT - 1))]
+      );
+
+  // 각 목표 시각에 가장 가까운 데이터 포인트 → xTicks (최소 54px 간격 보장)
+  const MIN_GAP = 54;
+  const xTicks = [];
+  for (const target of selected) {
+    let closest = points[0];
+    let closestDiff = Infinity;
+    for (const p of points) {
+      const diff = Math.abs(new Date(p.item.measured_at).getTime() - target);
+      if (diff < closestDiff) { closest = p; closestDiff = diff; }
+    }
+    const prev = xTicks[xTicks.length - 1];
+    if (!prev || closest.x - prev.point.x >= MIN_GAP) {
+      xTicks.push({ point: closest, labelTime: target });
+    }
+  }
 
   return (
     <div style={{ width: '100%', overflowX: 'auto' }}>
