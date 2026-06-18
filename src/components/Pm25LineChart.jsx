@@ -88,9 +88,13 @@ export default function Pm25LineChart({ data, loading, error, metric }) {
           const isFirst = i === 0;
           const isLast = i === xTicks.length - 1;
           const anchor = isFirst ? 'start' : isLast ? 'end' : 'middle';
+          const date = new Date(p.item.measured_at);
+          const prevDate = i > 0 ? new Date(xTicks[i - 1].item.measured_at) : null;
+          const dayChanged = prevDate && date.toDateString() !== prevDate.toDateString();
+          const timeStr = date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
           return (
             <text key={p.item.measured_at} x={p.x} y={height - 12} textAnchor={anchor} fill="#9aa0a6" fontSize="11">
-              {new Date(p.item.measured_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+              {dayChanged ? `${date.getMonth() + 1}/${date.getDate()} ${timeStr}` : timeStr}
             </text>
           );
         })}
