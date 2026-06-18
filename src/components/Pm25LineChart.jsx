@@ -38,24 +38,10 @@ export default function Pm25LineChart({ data, loading, error, metric }) {
   const lastTime = new Date(points[points.length - 1].item.measured_at).getTime();
   const span = lastTime - firstTime;
 
-  const tickCount = Math.min(TICK_COUNT, points.length);
-  const xTicks = [];
-  for (let i = 0; i < tickCount; i++) {
-    const ratio = tickCount > 1 ? i / (tickCount - 1) : 0;
-    const target = firstTime + ratio * span;
-    let closest = points[0];
-    let closestDiff = Infinity;
-    for (const p of points) {
-      const diff = Math.abs(new Date(p.item.measured_at).getTime() - target);
-      if (diff < closestDiff) {
-        closest = p;
-        closestDiff = diff;
-      }
-    }
-    if (!xTicks.length || xTicks[xTicks.length - 1] !== closest) {
-      xTicks.push(closest);
-    }
-  }
+  // 차트 x좌표가 인덱스 기반이므로 tick도 인덱스 기반으로 선택해야 시각적 겹침이 없음
+  const n = points.length - 1;
+  const tickIndices = [...new Set([0, Math.round(n / 3), Math.round((2 * n) / 3), n])];
+  const xTicks = tickIndices.map((idx) => points[idx]);
 
   return (
     <div style={{ width: '100%', overflowX: 'auto' }}>

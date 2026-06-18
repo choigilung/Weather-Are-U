@@ -3,10 +3,20 @@ const axios = require('axios');
 const alertManager = require('./alertManager');
 require('dotenv').config();
 
+// AirKorea/기상청 관측값은 시간 단위로만 갱신되므로, 5분 폴링마다 호출하면
+// 일일 API 호출 한도(통상 1,000회)를 빠르게 초과한다. 지역별로 약 55분간 캐시해 재사용한다.
+const CACHE_TTL_MS = 55 * 60 * 1000;
+
+function isCacheValid(entry) {
+  return Boolean(entry) && Date.now() - entry.fetchedAt < CACHE_TTL_MS;
+}
+
 class WeatherEngine {
   constructor() {
     this.pollingInterval = 5;
     this.observers = [];
+    this.airKoreaCache = new Map();
+    this.weatherCache = new Map();
   }
 
   subscribe(observer) {
@@ -48,47 +58,58 @@ class WeatherEngine {
     const apiKey = process.env.AIRKOREA_API_KEY;
     if (!apiKey) return this.generateSimulationData(region);
 
-    try {
-      const response = await axios.get('https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty', {
-        params: {
-          serviceKey: apiKey,
-          returnType: 'json',
-          numOfRows: 100,
-          pageNo: 1,
-          sidoName: sidoMap[region] || region,
-          ver: '1.0',
-        },
-        timeout: 10000,
-      });
+    let airData = this.airKoreaCache.get(region);
+    if (!isCacheValid(airData)) {
+      try {
+        const response = await axios.get('https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty', {
+          params: {
+            serviceKey: apiKey,
+            returnType: 'json',
+            numOfRows: 100,
+            pageNo: 1,
+            sidoName: sidoMap[region] || region,
+            ver: '1.0',
+          },
+          timeout: 10000,
+        });
 
-      const items = response.data?.response?.body?.items;
-      if (!items || items.length === 0) {
-        console.log(`[WeatherEngine] ${region} API 데이터 없음. 시뮬레이션 데이터를 사용합니다.`);
+        const items = response.data?.response?.body?.items;
+        if (!items || items.length === 0) {
+          console.log(`[WeatherEngine] ${region} API 데이터 없음. 시뮬레이션 데이터를 사용합니다.`);
+          return this.generateSimulationData(region);
+        }
+
+        const item = items[0];
+        airData = {
+          pm25: parseFloat(item.pm25Value) || null,
+          pm10: parseFloat(item.pm10Value) || null,
+          fetchedAt: Date.now(),
+        };
+        this.airKoreaCache.set(region, airData);
+      } catch (error) {
+        console.error(`[WeatherEngine] ${region} API 오류:`, error.message);
         return this.generateSimulationData(region);
       }
-
-      const item = items[0];
-      const pm25 = parseFloat(item.pm25Value) || null;
-      const pm10 = parseFloat(item.pm10Value) || null;
-      const weatherData = await this.fetchWeatherData(region);
-
-      return {
-        region,
-        pm25: pm25 ?? Math.floor(Math.random() * 80) + 5,
-        pm10: pm10 ?? Math.floor(Math.random() * 120) + 10,
-        co2: Math.floor(Math.random() * 300) + 350,
-        temperature: weatherData?.temperature ?? parseFloat((Math.random() * 15 + 15).toFixed(1)),
-        humidity: weatherData?.humidity ?? Math.floor(Math.random() * 40) + 40,
-        measured_at: new Date(),
-        source: 'api',
-      };
-    } catch (error) {
-      console.error(`[WeatherEngine] ${region} API 오류:`, error.message);
-      return this.generateSimulationData(region);
     }
+
+    const weatherData = await this.fetchWeatherData(region);
+
+    return {
+      region,
+      pm25: airData.pm25 ?? Math.floor(Math.random() * 80) + 5,
+      pm10: airData.pm10 ?? Math.floor(Math.random() * 120) + 10,
+      co2: Math.floor(Math.random() * 300) + 350,
+      temperature: weatherData?.temperature ?? parseFloat((Math.random() * 15 + 15).toFixed(1)),
+      humidity: weatherData?.humidity ?? Math.floor(Math.random() * 40) + 40,
+      measured_at: new Date(),
+      source: 'api',
+    };
   }
 
   async fetchWeatherData(region) {
+    const cached = this.weatherCache.get(region);
+    if (isCacheValid(cached)) return cached;
+
     const regionGrid = {
       서울: { nx: 60, ny: 127 },
       부산: { nx: 98, ny: 76 },
@@ -106,7 +127,12 @@ class WeatherEngine {
     const grid = regionGrid[region];
     if (!grid) return null;
 
-    return this.getNowcastByGrid(grid.nx, grid.ny);
+    const result = await this.getNowcastByGrid(grid.nx, grid.ny);
+    if (!result) return cached || null;
+
+    const entry = { ...result, fetchedAt: Date.now() };
+    this.weatherCache.set(region, entry);
+    return entry;
   }
 
   async getNowcastByGrid(nx, ny) {
