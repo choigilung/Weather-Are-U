@@ -35,39 +35,15 @@ export default function Pm25LineChart({ data, loading, error, metric }) {
   }));
   const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
   const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-  const firstTime = new Date(points[0].item.measured_at).getTime();
   const lastTime = new Date(points[points.length - 1].item.measured_at).getTime();
-
-  // KST 기준 2시간 경계(00:00, 02:00, 04:00…) 목록 수집
-  const firstBoundaryKST = Math.ceil((firstTime + KST_OFFSET_MS) / TWO_HOURS_MS) * TWO_HOURS_MS;
-  const allBoundaries = [];
-  for (let kst = firstBoundaryKST; kst <= lastTime + KST_OFFSET_MS; kst += TWO_HOURS_MS) {
-    allBoundaries.push(kst - KST_OFFSET_MS);
-  }
-
-  // 4개 균등 선택
-  const WANT = 4;
-  const selected = allBoundaries.length <= WANT
-    ? allBoundaries
-    : Array.from({ length: WANT }, (_, i) =>
-        allBoundaries[Math.round((i * (allBoundaries.length - 1)) / (WANT - 1))]
-      );
-
-  // 각 목표 시각에 가장 가까운 데이터 포인트 → xTicks (최소 54px 간격 보장)
-  const MIN_GAP = 54;
-  const xTicks = [];
-  for (const target of selected) {
-    let closest = points[0];
-    let closestDiff = Infinity;
-    for (const p of points) {
-      const diff = Math.abs(new Date(p.item.measured_at).getTime() - target);
-      if (diff < closestDiff) { closest = p; closestDiff = diff; }
-    }
-    const prev = xTicks[xTicks.length - 1];
-    if (!prev || closest.x - prev.point.x >= MIN_GAP) {
-      xTicks.push({ point: closest, labelTime: target });
-    }
-  }
+  const lastBoundary = Math.floor((lastTime + KST_OFFSET_MS) / TWO_HOURS_MS) * TWO_HOURS_MS - KST_OFFSET_MS;
+  const xTicks = Array.from({ length: 4 }, (_, index) => {
+    const labelTime = lastBoundary - (3 - index) * TWO_HOURS_MS;
+    return {
+      x: pad.left + ((index + 1) / 5) * innerW,
+      labelTime,
+    };
+  });
 
   return (
     <div style={{ width: '100%', overflowX: 'auto' }}>
@@ -110,13 +86,13 @@ export default function Pm25LineChart({ data, loading, error, metric }) {
         ))}
 
         {/* X축 레이블 */}
-        {xTicks.map(({ point: p, labelTime }, i) => {
+        {xTicks.map(({ x, labelTime }, i) => {
           const isFirst = i === 0;
           const isLast = i === xTicks.length - 1;
           const anchor = isFirst ? 'start' : isLast ? 'end' : 'middle';
           const timeStr = new Date(labelTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
           return (
-            <text key={labelTime} x={p.x} y={height - 12} textAnchor={anchor} fill="#9aa0a6" fontSize="11">
+            <text key={labelTime} x={x} y={height - 12} textAnchor={anchor} fill="#9aa0a6" fontSize="11">
               {timeStr}
             </text>
           );
