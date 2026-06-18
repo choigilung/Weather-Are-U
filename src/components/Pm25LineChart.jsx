@@ -33,25 +33,17 @@ export default function Pm25LineChart({ data, loading, error, metric }) {
     value: min + (max - min) * ratio,
     y: pad.top + (1 - ratio) * innerH,
   }));
-  const firstTime = new Date(points[0].item.measured_at).getTime();
-  const lastTime = new Date(points[points.length - 1].item.measured_at).getTime();
-
-  // 2시간 경계(00:00, 02:00, 04:00 …)마다 tick 생성, 픽셀 간격이 좁으면 자동 스킵
   const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-  const MIN_LABEL_GAP = 54;
-  const startBoundary = Math.ceil(firstTime / TWO_HOURS_MS) * TWO_HOURS_MS;
-  const xTicks = [];
-  for (let target = startBoundary; target <= lastTime + TWO_HOURS_MS / 2; target += TWO_HOURS_MS) {
-    let closest = points[0];
-    let closestDiff = Infinity;
-    for (const p of points) {
-      const diff = Math.abs(new Date(p.item.measured_at).getTime() - target);
-      if (diff < closestDiff) { closest = p; closestDiff = diff; }
-    }
-    if (!xTicks.length || (xTicks[xTicks.length - 1] !== closest && closest.x - xTicks[xTicks.length - 1].x >= MIN_LABEL_GAP)) {
-      xTicks.push(closest);
-    }
-  }
+
+  // 정확히 4개: 인덱스 0, 1/3, 2/3, 끝 → 픽셀 겹침 원천 차단
+  // 레이블은 각 포인트 시각을 가장 가까운 2시간 경계로 반올림
+  const n = points.length - 1;
+  const xTicks = [...new Set([0, Math.round(n / 3), Math.round((2 * n) / 3), n])].map((idx) => {
+    const p = points[idx];
+    const t = new Date(p.item.measured_at).getTime();
+    const labelTime = Math.round(t / TWO_HOURS_MS) * TWO_HOURS_MS;
+    return { point: p, labelTime };
+  });
 
   return (
     <div style={{ width: '100%', overflowX: 'auto' }}>
@@ -94,17 +86,14 @@ export default function Pm25LineChart({ data, loading, error, metric }) {
         ))}
 
         {/* X축 레이블 */}
-        {xTicks.map((p, i) => {
+        {xTicks.map(({ point: p, labelTime }, i) => {
           const isFirst = i === 0;
           const isLast = i === xTicks.length - 1;
           const anchor = isFirst ? 'start' : isLast ? 'end' : 'middle';
-          const date = new Date(p.item.measured_at);
-          const prevDate = i > 0 ? new Date(xTicks[i - 1].item.measured_at) : null;
-          const dayChanged = prevDate && date.toDateString() !== prevDate.toDateString();
-          const timeStr = date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+          const timeStr = new Date(labelTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
           return (
-            <text key={p.item.measured_at} x={p.x} y={height - 12} textAnchor={anchor} fill="#9aa0a6" fontSize="11">
-              {dayChanged ? `${date.getMonth() + 1}/${date.getDate()} ${timeStr}` : timeStr}
+            <text key={labelTime} x={p.x} y={height - 12} textAnchor={anchor} fill="#9aa0a6" fontSize="11">
+              {timeStr}
             </text>
           );
         })}
